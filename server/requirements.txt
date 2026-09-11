@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+librosa
+soundfile
+autrainer
+groq
+python-dotenv
+gTTS
+numpy
+scipy

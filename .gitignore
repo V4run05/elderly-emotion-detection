@@ -1,0 +1,37 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# Tizen build output
+watch-app/Debug/
+watch-app/Release/
+watch-app/*.tproject
+watch-app/.tizen_meta_files/
+
+# Local Hugging Face model cache, if it ever ends up inside the repo
+server/.hf_cache/
+server/models/
+
+# Secrets
+server/.env
+
+# Runtime artifacts
+server/*.db
+server/tmp/
+server/test_audio_in/
+server/test_audio_out/
+server/venv/
+*.mp3
+*.wav
+*.m4a
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Claude Code session-local files
+.claude/
+
+# Server runtime logs
+server/*.log
