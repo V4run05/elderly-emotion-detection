@@ -8,6 +8,21 @@ watch-app/Release/
 watch-app/*.tproject
 watch-app/.tizen_meta_files/
 
+# Android build output
+android-app/local.properties
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/*.iml
+android-app/app/*.iml
+android-app/.idea/
+android-app/gradle/wrapper/gradle-wrapper.jar
+android-app/gradlew
+android-app/gradlew.bat
+android-app/captures/
+android-app/.cxx/
+android-app/local.env
+
 # Local Hugging Face model cache, if it ever ends up inside the repo
 server/.hf_cache/
 server/models/
