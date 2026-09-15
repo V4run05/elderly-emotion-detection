@@ -12,10 +12,13 @@ check memory before re-litigating this.
 
 ## What this project is
 
-Samsung Galaxy Watch Active2 (Tizen OS, native C++) records a voice clip on a button tap → sends it to a local
-Python FastAPI server → server detects emotion from voice (pretrained model), generates an empathetic LLM
-response conditioned on that emotion, converts it to speech, sends the audio back → watch plays it through its
-speaker. Heart rate/face/fusion are explicitly out of scope for this build (documented Phase 2, not now). Full
+An Android phone (originally: a Samsung Galaxy Watch Active2) records a voice clip and, now, a face photo on
+check-in → sends both to a local Python FastAPI server → server detects emotion from voice AND face
+(confidence-weighted fusion of both when a face reading is available), keeps a running conversation, replies
+via LLM in context, converts the reply to speech, sends the audio back → client plays it and shows the
+conversation as a chat. Heart rate is still out of scope (Phase 2). Face + fusion were originally deferred too
+(the watch has no camera) but **were added 2026-09-15** now that the client is a phone — see "What's next"
+below and docs/IMPLEMENTATION_NOTES.md point 11 before assuming they're still out of scope. Full original
 background/rationale is in docs/VOICE_LOOP_PLAN.md, docs/TEAMMATE_HANDOFF.md, docs/WATCH_SETUP_GUIDE.md.
 
 ## What's already done
@@ -42,26 +45,86 @@ background/rationale is in docs/VOICE_LOOP_PLAN.md, docs/TEAMMATE_HANDOFF.md, do
   recorder+internet privileges. `project_def.prop` lists sources.
 - Never opened in Tizen Studio or compiled. Left in place in case a watch deployment path reopens later.
 
-**Android app (android-app/) — source written this session, NOT yet run on a device:**
-- Kotlin/Gradle project: `MainActivity.kt` (record via `MediaRecorder` ~5s AAC/M4A → send → play response via
-  `MediaPlayer`, same idle/recording/sending/speaking state machine as the watch plan had), `NetworkClient.kt`
-  (OkHttp multipart POST to `/checkin`).
-- **`android-app/app/src/main/java/com/example/elderlycompanion/NetworkClient.kt`'s `SERVER_URL` is a
-  placeholder IP (192.168.1.100) — must be edited to the laptop's actual LAN IP before running.**
-- No `gradlew`/wrapper jar committed (binary, environment-specific) — Android Studio will generate it on
-  first open/sync. Android Studio + its bundled JDK are already installed on this machine; the Android SDK
-  itself was NOT yet configured as of this session — Android Studio should prompt to install missing SDK
-  components on first project open.
-- See android-app/README.md for the full run steps (USB debugging on a real phone — no cert needed, unlike
-  Tizen).
+**Android app (android-app/) — built, runs on a real phone, UI redesigned, one round of real bugs fixed:**
+- Android Studio SDK/Gradle wrapper setup completed this session (Gradle's own distribution download timed
+  out on this network — worked around by manually downloading `gradle-8.7-bin.zip` into the wrapper's dists
+  cache folder; see android-app/README.md if this recurs).
+- `SERVER_URL` in `NetworkClient.kt` is set to this network's real laptop IP
+  (`10.180.225.254` — a phone-hosted hotspot, laptop as client. **Re-check/update this if the network
+  changes.**).
+- First real on-device test: recorded and sent audio, then "nothing happened" — root-caused as TWO
+  compounding bugs, both fixed (details in docs/IMPLEMENTATION_NOTES.md points 6-8):
+  1. `ffmpeg` wasn't installed on the server machine, so `librosa`/`soundfile` couldn't decode the AAC/M4A
+     audio the app records — every real check-in silently 500'd. Fixed: `ffmpeg` installed via winget,
+     `preprocess.py` rewritten to explicitly transcode via ffmpeg before reading. **`ffmpeg` must be on PATH
+     on whatever machine runs the server — it's a system dependency, not pip-installable.**
+  2. The app silently swallowed all failures (network errors, server errors) and just reset to idle with no
+     visible message — impossible to debug from the outside. Fixed: `MainActivity.kt` now shows errors
+     on-screen; `main.py`'s `/checkin` now returns JSON `{"error": ...}` on failure instead of a bare 500.
+- UI redesigned (round 1) per request ("make it look a bit better and intuitive"): Material Components, a
+  circular mic button that changes color/icon by state, plus a result card showing the detected mood +
+  confidence and the full LLM reply text. **User confirmed this round worked** via a screenshot (device
+  mirrored in Android Studio's "Running Devices" panel), but flagged a phrasing bug ("You sound sadness
+  (81%)") — fixed with an emotion→natural-phrase map.
+- **Round 2 (same session, latest state): conversation + full UI rebuild**, per explicit follow-up request
+  ("make it like a conversation" + "upgrade the UI, it looks very bad, use references from the internet").
+  Implemented:
+  - `server/app/dialogue/stt_client.py`: transcribes the audio via Groq Whisper (`whisper-large-v3-turbo`)
+    so the LLM sees actual spoken words, not just the emotion label.
+  - `server/app/storage/conversation.py`: SQLite conversation history threaded into the LLM prompt for real
+    multi-turn continuity (asks follow-ups, references earlier turns) instead of one-off canned replies.
+    `POST /reset` clears it.
+  - `/checkin` gained an `X-User-Text` header (the transcription) alongside the existing three.
+  - Android UI rebuilt from a single card into an actual chat interface (`ChatAdapter`/`ChatMessage`,
+    RecyclerView, distinct user/assistant bubble layouts with an avatar), following current chat-UI design
+    patterns pulled from a web search (not guessed) — see docs/IMPLEMENTATION_NOTES.md point 10 and
+    android-app/README.md for the specifics.
+  - Verified: server-side conversational continuity via two curl calls in a row (second reply's wording
+    referenced the first). Verified: `gradle assembleDebug` succeeds.
+- **Round 3 (same session, latest state): full facial + voice confidence-weighted fusion**, per explicit
+  follow-up request ("full" fusion, reinstating the original plan's deferred Phase 2 work). Implemented:
+  - `server/app/face_emotion/model.py`: pretrained `trpakov/vit-face-expression` (standard `transformers`
+    ViT checkpoint), reduced from its native 7 classes to the shared 4-class taxonomy (Angry/Happy/Sad/
+    Neutral kept, Disgust/Fear/Surprise mass dropped and the rest renormalized — a deliberate, documented
+    simplification, not an oversight).
+  - `server/app/fusion/fuse.py`: the original plan's exact formula, `w_i = conf_i / sum(conf_j)`, applied
+    per-class. Falls back to voice-only when no face reading exists.
+  - `/checkin` now accepts an optional `image` multipart field; `X-Emotion-Label`/`X-Emotion-Confidence` now
+    carry the *fused* result (backward-compatible for anything already reading just those two), with new
+    `X-Voice-*`/`X-Face-*` headers for the breakdown.
+  - Android: added `CAMERA` permission (denial degrades gracefully to voice-only, doesn't block the app),
+    CameraX front-camera preview shown during the recording window, one photo captured right as recording
+    ends, sent as the second multipart part. Chat bubble captions now show `(voice+face)` vs `(voice)`.
+  - **Deliberately NOT implemented:** the original novelty framing's "age-bias-corrected" qualifier — no
+    concrete algorithm for that was ever specified anywhere in the planning docs, only the fusion formula
+    was concrete. This is a real open question if it needs to be part of the final deliverable, not
+    something quietly satisfied by this change — flag it back to the user if it comes up.
+  - Verified: face model smoke-tested standalone (synthetic image), fusion math checked against
+    hand-computed weights, both audio-only and audio+image `/checkin` paths tested via curl (confirmed
+    `X-Voice-*` always present, `X-Face-*` only when an image was sent). `gradle assembleDebug` succeeds
+    with CameraX added.
+  - **CONFIRMED WORKING ON THE PHONE** (screenshot from the user): a real check-in showed a user bubble
+    ("Hi.") with caption "sounds a bit down · 57% (voice+face)" and a natural, non-canned assistant reply —
+    real transcription, real fusion, real conversational LLM output, all together on-device.
+- **Round 4 (same session): fixed a live bug hit during that on-device test.** The *second* check-in in the
+  same conversation returned a 500. Root cause: `openai/gpt-oss-20b` on Groq intermittently emits a spurious
+  tool-call-formatted response even though this project never passes a `tools` field — confirmed via web
+  search as a known, independently-reported Groq/gpt-oss bug, not something wrong in our prompt. Fixed in
+  `llm_client.py`: catches `groq.BadRequestError` with `error.code == "tool_use_failed"` and retries up to 3
+  attempts; if it's still failing after that, `generate_response()` degrades to a generic "could you say
+  that again?" fallback instead of 500ing the whole `/checkin` request. Verified the normal (non-buggy) path
+  still works after the change via curl; the actual retry-on-failure branch can't be forced/verified
+  directly since the bug isn't reliably reproducible — reasonable code-review confidence, not empirical
+  confirmation of the retry itself.
 
 ## What's next
 
-1. Open `android-app/` in Android Studio, let it configure the SDK/Gradle wrapper, fix `SERVER_URL`.
-2. Connect the Android phone via USB debugging, run the app, grant the mic permission on first tap.
-3. Confirm the full loop works with the real server (already built and working — see below) on real phone-mic
-   audio. This is the first real qualitative check on the pretrained model with real human speech (only
-   tested on a synthetic sine-wave clip so far).
+1. **Keep testing the conversation on the phone**, especially multiple check-ins in a row, to see if the
+   gpt-oss retry fix holds up against the intermittent Groq bug in practice.
+2. Try denying camera permission once to confirm graceful voice-only fallback (caption should say `(voice)`
+   with no crash) — not yet explicitly tested.
+3. Revisit whether "age-bias-corrected" fusion needs to be modeled explicitly, or whether confidence-weighted
+   fusion alone satisfies the review's expectations — this was left an open question, not resolved.
 4. If time/scope allows later: revisit the Tizen watch path if a certificate workaround is ever found, using
    the untouched `watch-app/` sources and docs/WATCH_SETUP_GUIDE.md.
 

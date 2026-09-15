@@ -1,12 +1,14 @@
-# Elderly Companion Watch
+# Elderly Companion
 
-A closed loop: a Samsung Galaxy Watch Active2 (Tizen OS) records a short voice clip on a button tap, sends it
-over WiFi to a local Python server, which detects the speaker's emotion from their voice, generates an
-empathetic LLM response conditioned on that emotion, converts the response to speech, and sends the audio back
-for the watch to play through its own speaker.
+A closed loop: recording a short voice clip (and, on the Android client, a face photo) sends it over WiFi to
+a local Python server, which detects the speaker's emotion from their voice and face (confidence-weighted
+fusion of both, when a face reading is available), keeps a running conversation so replies build on what was
+actually said instead of reading like a template, converts the reply to speech, and sends the audio back for
+the client to play.
 
-Heart rate, face detection, and multimodal fusion are deferred to a later phase and are out of scope for this
-build.
+Heart rate is still deferred to a later phase and out of scope. Face detection + confidence-weighted fusion
+were originally deferred too (the watch has no camera) but have since been implemented now that the active
+client is a phone — see the platform note below and `docs/IMPLEMENTATION_NOTES.md` point 11.
 
 **Client platform note (2026-09):** Samsung discontinued the Samsung wearable-certificate creation flow in
 Tizen Studio, which blocks sideloading any custom-built app onto the physical watch. For the current course
@@ -30,6 +32,15 @@ pip install -r requirements.txt
 python run_server.py
 ```
 
-The server binds to `0.0.0.0:8000` so a watch on the same WiFi network can reach `POST /checkin`.
+`ffmpeg` must also be installed as a **system** dependency and on PATH (not pip-installable) — it's required
+to decode the AAC/M4A audio the clients record. See `server/requirements.txt` for install commands per OS.
 
-See `docs/` for the full plan, watch device setup guide, and integration order.
+The server binds to `0.0.0.0:8000` so a phone/watch on the same WiFi network can reach `POST /checkin`.
+
+## Quick start (Android client)
+
+See `android-app/README.md` — open in Android Studio, set `SERVER_URL` to your machine's LAN IP, run on a
+phone via USB debugging.
+
+See `docs/` for the full plan, watch device setup guide, integration order, and `docs/IMPLEMENTATION_NOTES.md`
+for gotchas found while building (read before touching the emotion model, LLM client, or audio preprocessing).

@@ -1,0 +1,12 @@
+<resources>
+    <color name="brand_primary">#3F6BFF</color>
+    <color name="brand_primary_dark">#2C4FCC</color>
+    <color name="state_idle">#3F6BFF</color>
+    <color name="state_recording">#E5484D</color>
+    <color name="state_sending">#F2A93B</color>
+    <color name="state_speaking">#30A46C</color>
+    <color name="background_light">#F7F8FA</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="text_primary">#1A1D29</color>
+    <color name="text_secondary">#6B7280</color>
+</resources>
