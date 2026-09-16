@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 import traceback
 import json
@@ -222,25 +223,21 @@ async def reset():
 async def chat_message(text: str = Form(...)):
     now = datetime.now(timezone.utc).isoformat()
     add_turn("user", text, now)
-    
+
     # Simple simulated response if no GROQ_API_KEY
-    import os
     if "GROQ_API_KEY" not in os.environ:
         reply = "I understand. I am here for you. (Note: Groq API key is missing, so I cannot generate a full AI response)."
     else:
-        from app.llm.respond import generate_response
-        from app.storage.conversation import get_recent_turns
-        
         # Get latest fused emotion if available, else Neutral
         emotion = "Neutral"
-        if latest_fused:
-            emotion = max(latest_fused.items(), key=lambda x: x[1])[0]
-            
+        for entry in latest_modalities.values():
+            if entry is not None:
+                emotion = entry["data"]["label"]
+                break
+
         history = get_recent_turns(10)
-        # LLM generate_response automatically uses the history!
-        reply = generate_response(text, emotion, history[:-1]) # exclude the user text we just added, wait generate_response appends it itself?
-        # Actually generate_response takes user_text explicitly.
-        
+        reply = generate_response(text, emotion, history[:-1])
+
     add_turn("assistant", reply, datetime.now(timezone.utc).isoformat())
     return {"status": "ok", "reply": reply}
 

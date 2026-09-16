@@ -41,11 +41,22 @@ def _call_llm(conversation_history: list, user_text: str, emotion_label: str) ->
                 model=MODEL_ID,
                 # gpt-oss models spend a chunk of the token budget on hidden reasoning before
                 # the visible reply, so max_tokens needs headroom well beyond the short reply
-                # length itself.
+                # length itself. Capping reasoning effort to "low" keeps that hidden spend (and
+                # latency) down and avoids it eating the whole budget before any visible content
+                # comes out.
                 max_tokens=400,
+                reasoning_effort="low",
                 messages=messages,
             )
-            return completion.choices[0].message.content
+            content = completion.choices[0].message.content
+            if not content:
+                # Same failure mode as the tool_use_failed bug below: the model spent its whole
+                # budget on hidden reasoning and returned nothing visible. Retry rather than
+                # silently returning/storing a blank reply.
+                if attempt < MAX_ATTEMPTS - 1:
+                    continue
+                raise RuntimeError("Groq returned an empty completion after retries")
+            return content
         except BadRequestError as exc:
             # Known intermittent Groq/gpt-oss bug: the model occasionally emits a spurious
             # tool-call-formatted response even though no `tools` were passed in this request
