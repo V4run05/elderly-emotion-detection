@@ -1,46 +1,24 @@
-# Elderly Companion
+# Elderly Companion POC
 
-A closed loop: recording a short voice clip (and, on the Android client, a face photo) sends it over WiFi to
-a local Python server, which detects the speaker's emotion from their voice and face (confidence-weighted
-fusion of both, when a face reading is available), keeps a running conversation so replies build on what was
-actually said instead of reading like a template, converts the reply to speech, and sends the audio back for
-the client to play.
+A multimodal emotion-aware virtual companion for the elderly.
 
-Heart rate is still deferred to a later phase and out of scope. Face detection + confidence-weighted fusion
-were originally deferred too (the watch has no camera) but have since been implemented now that the active
-client is a phone — see the platform note below and `docs/IMPLEMENTATION_NOTES.md` point 11.
+**Pivot Note:** The original `watch-app` (Tizen C++) approach was discontinued because Tizen code-signing certificates are no longer issued for older Samsung watches (e.g., Active2). We pivoted to a laptop (camera + mic) and a Wokwi ESP32 simulation for physiological sensors to create this robust Proof of Concept (POC).
 
-**Client platform note (2026-09):** Samsung discontinued the Samsung wearable-certificate creation flow in
-Tizen Studio, which blocks sideloading any custom-built app onto the physical watch. For the current course
-review, the same closed loop is implemented as an Android phone app instead (`android-app/`) — no certificate
-required, just USB debugging. `watch-app/` (the original Tizen native C++ client) is kept as-is for if/when a
-watch deployment path reopens. The server is unchanged and shared by both clients.
+## System Architecture
 
-## Repo layout
+1. **Input Layer (Multimodal):**
+   - **Voice:** Laptop microphone (processed via Hugging Face `wav2vec2` for emotion and energy for SNR/quality).
+   - **Face:** Laptop camera (MediaPipe FaceMesh for detection/quality + ViT for emotion).
+   - **Physiological:** Wokwi ESP32 simulation sending HR, SpO2, GSR, and Accelerometer data. Processed via a RandomForest model trained on the WESAD dataset.
+2. **Fusion Layer:**
+   - A dynamic, quality-weighted fusion pipeline normalizes the confidence/quality scores from all three modalities to produce a single reliable emotion state.
+3. **Response & Escalation Layer:**
+   - Uses an LLM to generate emotionally aware responses.
+   - Monitors for physiological triggers (e.g., HR spikes, sudden falls).
+   - Triggers are handled via a 2-stage escalation flow: (1) Prompt the user, (2) If no response, escalate to a caregiver/calming intervention.
+4. **Dashboard:**
+   - A live monitoring interface styled with the Matcha design system, displaying mood history, live sensor states, and system escalations.
 
-- `android-app/` — Android (Kotlin) client: record → POST to server → play response. Current active client.
-- `watch-app/` — Tizen Studio native C++ project (recorder, network client, player, UI). On hold — see note
-  above.
-- `server/` — Python FastAPI backend (voice emotion, dialogue/LLM, TTS, mood log)
-- `docs/` — planning and setup docs
+## Setup Instructions
 
-## Quick start (server)
-
-```
-cd server
-pip install -r requirements.txt
-python run_server.py
-```
-
-`ffmpeg` must also be installed as a **system** dependency and on PATH (not pip-installable) — it's required
-to decode the AAC/M4A audio the clients record. See `server/requirements.txt` for install commands per OS.
-
-The server binds to `0.0.0.0:8000` so a phone/watch on the same WiFi network can reach `POST /checkin`.
-
-## Quick start (Android client)
-
-See `android-app/README.md` — open in Android Studio, set `SERVER_URL` to your machine's LAN IP, run on a
-phone via USB debugging.
-
-See `docs/` for the full plan, watch device setup guide, integration order, and `docs/IMPLEMENTATION_NOTES.md`
-for gotchas found while building (read before touching the emotion model, LLM client, or audio preprocessing).
+Please see [docs/SETUP.md](docs/SETUP.md) for detailed instructions on how to install dependencies, train the physiological model, run the backend, and start the dashboard & Wokwi simulation.

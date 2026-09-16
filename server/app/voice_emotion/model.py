@@ -29,6 +29,7 @@ import sys
 import subprocess
 import tempfile
 import shutil
+import numpy as np
 
 MODEL_ID = "autrainer/msp-podcast-emo-class-big4-w2v2-l-emo"
 CLASS_CODES = {"A": "Anger", "H": "Happiness", "N": "Neutral", "S": "Sadness"}
@@ -65,7 +66,7 @@ def _find_predictions_csv(output_root: str) -> str:
     return csv_files[0]
 
 
-def _parse_row(row: dict) -> dict:
+def _parse_row(row: dict, quality_score: float) -> dict:
     probs = {}
     for code, label in CLASS_CODES.items():
         if code in row:
@@ -78,13 +79,27 @@ def _parse_row(row: dict) -> dict:
     top_label = CLASS_CODES.get(top_code, top_code)
     confidence = probs.get(top_label, max(probs.values()))
 
-    return {"label": top_label, "confidence": confidence, "probs": probs}
+    return {"label": top_label, "confidence": confidence, "probs": probs, "quality_score": quality_score}
 
+def _calculate_quality_score(waveform_array: np.ndarray) -> float:
+    """Calculate a quality score based on the RMS energy of the waveform.
+    This acts as a simple proxy for Voice Activity Detection/SNR."""
+    if len(waveform_array) == 0:
+        return 0.0
+    rms = np.sqrt(np.mean(waveform_array**2))
+    # Typical normalized audio RMS might be around 0.01 to 0.3
+    # We want a smooth curve that reaches ~1.0 around 0.1 RMS
+    # A simple squashing function or just clipping:
+    score = min(1.0, rms * 10.0) 
+    # Boost it slightly if there is at least some energy, but if it's dead silence it should be 0
+    return max(0.0, float(score))
 
 def predict(waveform_array, sample_rate: int = 16000) -> dict:
     """Run the pretrained emotion model on a single waveform and return
-    {label, confidence, probs}."""
+    {label, confidence, probs, quality_score}."""
     import soundfile as sf
+    
+    quality_score = _calculate_quality_score(waveform_array)
 
     work_dir = tempfile.mkdtemp(prefix="autrainer_")
     data_root = os.path.join(work_dir, "data")
@@ -106,6 +121,6 @@ def predict(waveform_array, sample_rate: int = 16000) -> dict:
             rows = list(csv.DictReader(f))
         if not rows:
             raise RuntimeError(f"Predictions CSV {csv_path} was empty")
-        return _parse_row(rows[0])
+        return _parse_row(rows[0], quality_score)
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)

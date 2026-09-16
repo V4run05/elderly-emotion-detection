@@ -50,3 +50,16 @@ server/venv/
 
 # Server runtime logs
 server/*.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Data & Models
+WESAD/
+*.pkl
+
+# Database
+mood_log.db

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elderly Companion - Live Monitoring</title>
+    <!-- Google Fonts for Matcha Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;500&family=Noto+Sans:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Companion Monitor</h1>
+                <div class="header-controls" style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btn-start-cam" class="btn-primary" onclick="startCamera()">Start Camera</button>
+                    <button id="btn-send-av" class="btn-primary hidden" onclick="stopAndSendAV()" style="background-color: var(--warning);">Stop & Analyze AV</button>
+                    <div id="connection-status" class="status-indicator">
+                        <span class="dot disconnected"></span>
+                        <span class="status-text">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- System State Banner (Escalation / Prompts) -->
+            <section id="actionable-banner" class="card hidden">
+                <div class="banner-content">
+                    <h2 id="banner-title" class="display">System Status</h2>
+                    <p id="banner-message">No active alerts.</p>
+                    <div id="banner-actions" class="hidden">
+                        <button class="btn-primary" onclick="resolveTrigger()">Mark Resolved</button>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid-2-col">
+                <!-- Left Column: Fused State & Camera -->
+                <div class="col">
+                    <section class="card">
+                        <h2 class="label-heading">CURRENT FUSED STATE</h2>
+                        <div class="fused-state">
+                            <div class="emotion-display" id="current-emotion">--</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidence-fill" style="width: 0%;"></div>
+                            </div>
+                            <div class="confidence-text">Confidence: <span id="current-confidence">0</span>%</div>
+                        </div>
+                    </section>
+
+                    <!-- Persistent Camera Feed / Captured Media -->
+                    <section class="card" id="webcam-container">
+                        <h2 class="label-heading">LIVE CAMERA FEED</h2>
+                        <video id="webcam-video" autoplay playsinline muted style="width: 100%; border-radius: 12px; background: #000; min-height: 200px; border: 2px solid var(--secondary);"></video>
+                        <img id="captured-image" class="hidden" style="width: 100%; border-radius: 12px; border: 2px solid var(--primary);" />
+                        <audio id="captured-audio" controls class="hidden" style="width: 100%; margin-top: 10px;"></audio>
+                        <canvas id="webcam-canvas" style="display:none;"></canvas>
+                    </section>
+
+                    <!-- Companion Dialogue History -->
+                    <section class="card">
+                        <h2 class="label-heading">COMPANION DIALOGUE</h2>
+                        <div id="dialogue-container" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                            <div style="color: #666; font-style: italic;">No active conversation...</div>
+                        </div>
+                        
+                        <!-- Two-Way Communication Chat Input -->
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="chat-input" placeholder="Type a message to your companion..." style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+                            <button id="btn-send-chat" style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="label-heading">MODALITY BREAKDOWN</h2>
+                        <div class="modality-list" id="modality-breakdown">
+                            <div class="modality-item">Waiting for data...</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column: Interactive Simulator & History -->
+                <div class="col">
+                    <section class="card" style="border: 2px solid var(--tertiary);">
+                        <h2 class="label-heading">BUILT-IN PHYSIO SIMULATOR</h2>
+                        <p class="subtitle">Drag the sliders to simulate physiological changes. Data is sent to the backend every 5 seconds.</p>
+                        
+                        <div class="sensor-slider">
+                            <label>Heart Rate (BPM): <span id="val-hr">75</span></label>
+                            <input type="range" id="slider-hr" min="50" max="150" value="75" oninput="document.getElementById('val-hr').innerText = this.value">
+                        </div>
+                        <br>
+                        <div class="sensor-slider">
+                            <label>SpO₂ (%): <span id="val-spo2">98</span></label>
+                            <input type="range" id="slider-spo2" min="80" max="100" value="98" oninput="document.getElementById('val-spo2').innerText = this.value">
+                        </div>
+                        <br>
+                        <div class="sensor-slider">
+                            <label>Movement (g): <span id="val-accel">1.0</span></label>
+                            <input type="range" id="slider-accel" min="0.5" max="5.0" step="0.1" value="1.0" oninput="document.getElementById('val-accel').innerText = this.value">
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="label-heading">SYSTEM EVENTS</h2>
+                        <div class="events-list" id="events-list">
+                            <!-- Populated via JS -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Using a simple JS fetch loop -->
+    <script src="app.js"></script>
+</body>
+</html>

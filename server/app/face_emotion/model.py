@@ -13,6 +13,7 @@ documented in docs/IMPLEMENTATION_NOTES.md.
 """
 
 from PIL import Image
+import numpy as np
 
 MODEL_ID = "trpakov/vit-face-expression"
 
@@ -38,17 +39,73 @@ def _load():
         _model = AutoModelForImageClassification.from_pretrained(MODEL_ID)
         _model.eval()
 
+def _detect_and_crop_face(image_path: str):
+    """Detects face using mediapipe, crops it, and calculates a quality score.
+    Returns (cropped_pil_image, quality_score). If mediapipe fails or no face is found,
+    it falls back to using the entire image with a low quality score."""
+    import cv2
+    image_cv = cv2.imread(image_path)
+    if image_cv is None:
+        return None, 0.0
+        
+    image_rgb = cv2.cvtColor(image_cv, cv2.COLOR_BGR2RGB)
+    h, w, _ = image_rgb.shape
+    fallback_image = Image.fromarray(image_rgb)
+    
+    try:
+        from mediapipe.python.solutions import face_detection as mp_face_detection
+        
+        with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5) as face_detection:
+            results = face_detection.process(image_rgb)
+            
+            if not results.detections:
+                # No face detected, but return fallback so we have a prediction to fuse (at low weight)
+                return fallback_image, 0.1
+                
+            # Get the highest confidence detection
+            best_detection = max(results.detections, key=lambda d: d.score[0])
+            bbox = best_detection.location_data.relative_bounding_box
+            
+            # Calculate quality score (confidence * size relative to frame)
+            face_area = bbox.width * bbox.height
+            confidence = best_detection.score[0]
+            quality_score = float(confidence * min(1.0, face_area * 5))
+            quality_score = max(0.1, min(1.0, quality_score))
+            
+            # Crop
+            xmin = max(0, int(bbox.xmin * w))
+            ymin = max(0, int(bbox.ymin * h))
+            width = int(bbox.width * w)
+            height = int(bbox.height * h)
+            
+            xmax = min(w, xmin + width)
+            ymax = min(h, ymin + height)
+            
+            cropped_cv = image_rgb[ymin:ymax, xmin:xmax]
+            if cropped_cv.size == 0:
+                return fallback_image, 0.1
+                
+            cropped_pil = Image.fromarray(cropped_cv)
+            return cropped_pil, quality_score
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Mediapipe face detection failed (%s), falling back to full image", e)
+        return fallback_image, 0.8
+
 
 def predict(image_path: str) -> dict:
     """Runs the pretrained face emotion model on an image and returns
-    {label, confidence, probs} reduced to the shared 4-class taxonomy, or None if no
-    overlapping class had any probability mass (shouldn't normally happen)."""
+    {label, confidence, probs, quality_score} reduced to the shared 4-class taxonomy, 
+    or None if no face is detected."""
     import torch
 
     _load()
 
-    image = Image.open(image_path).convert("RGB")
-    inputs = _processor(images=image, return_tensors="pt")
+    face_img, quality_score = _detect_and_crop_face(image_path)
+    if face_img is None:
+        return None
+
+    inputs = _processor(images=face_img, return_tensors="pt")
 
     with torch.no_grad():
         logits = _model(**inputs).logits
@@ -68,4 +125,9 @@ def predict(image_path: str) -> dict:
     reduced_probs = {k: v / total for k, v in reduced_probs.items()}
 
     top_label = max(reduced_probs, key=reduced_probs.get)
-    return {"label": top_label, "confidence": reduced_probs[top_label], "probs": reduced_probs}
+    return {
+        "label": top_label, 
+        "confidence": reduced_probs[top_label], 
+        "probs": reduced_probs,
+        "quality_score": quality_score
+    }
