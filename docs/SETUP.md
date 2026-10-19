@@ -118,6 +118,8 @@ node ..\clients\web\js\vad.test.mjs                       # end-of-answer detect
 .\venv\Scripts\python.exe scripts\smoke_test.py --audio C:\path\to\my_answer.m4a --image C:\path\to\me.jpg
 ```
 
+Evaluation on real data (datasets download, ~1 h total) is in [EVALUATION.md](EVALUATION.md) §10.
+
 The smoke test stores a real conversation; remove it with `seed_demo.py --clear-all` if needed.
 The bundled `test_clip` is a synthetic tone, not speech (the server will say it heard nothing).
 Record your own answer for a meaningful run.

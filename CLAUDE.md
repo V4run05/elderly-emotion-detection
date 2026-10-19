@@ -18,8 +18,11 @@ on a dashboard. Hardware requirement: a **Raspberry Pi** (integration is the nex
   only when needed, the daily "how are you feeling?" once a day
 - analysis: masking check, personal baseline, family dashboard with alerts
 - demo data and tests (50 pytest + 7 VAD scenarios)
+- evaluation on real data (CREMA-D voices, UTKFace faces, simulated conversations): see
+  [docs/EVALUATION.md](docs/EVALUATION.md). Main findings: the personal baseline is essential, the keyword
+  self-harm screen misses indirect statements, and the free Groq budget runs out (~80 replies/day)
 
-Next: test with real voices and faces, calibrate thresholds, try a phone as the device, then the
+Next: the fixes in EVALUATION.md §8 (LLM safety screen, honest fallback), test with real voices and faces, calibrate thresholds, try a phone as the device, then the
 Raspberry Pi integration. Check the top of [docs/CHANGELOG.md](docs/CHANGELOG.md) for the latest.
 
 ## Where to look
@@ -30,6 +33,7 @@ Raspberry Pi integration. Check the top of [docs/CHANGELOG.md](docs/CHANGELOG.md
 | Code structure, data flow, API, DB schema, models, Pi integration path, **gotchas** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | How to install, run, demo, test, troubleshoot | [docs/SETUP.md](docs/SETUP.md) |
 | What changed recently / how to restore old code | [docs/CHANGELOG.md](docs/CHANGELOG.md) |
+| Test results on real data, what works, what to fix | [docs/EVALUATION.md](docs/EVALUATION.md) |
 
 ## Repo map (short)
 
@@ -44,6 +48,7 @@ server/app/main.py              FastAPI API + serves clients/web
 clients/web/                    talk page, family dashboard, setup page (plain HTML/JS, no build)
 server/scripts/                 seed_demo.py, smoke_test.py (reference device client), evaluate_baseline.py
 server/tests/                   pytest (models stubbed)
+server/evaluation/              evaluation scripts + results (datasets gitignored), see docs/EVALUATION.md
 ```
 
 ## Commands (Windows, from `server/`)
@@ -59,7 +64,7 @@ node ..\clients\web\js\vad.test.mjs                # listening/VAD scenarios
 
 ## Rules for working here
 
-1. **Keep the 4 docs current.** After any significant change, update them in the same session:
+1. **Keep the 4 docs current** (plus EVALUATION.md when tests are re-run). After any significant change, update them in the same session:
    - **CHANGELOG.md**: every change, newest first (Added/Changed/Removed/Fixed + commit hash).
    - **ARCHITECTURE.md**: files moved/added, API or schema changed, a technical decision or gotcha found.
    - **PROJECT_SPEC.md**: scope, method, thresholds, alert rules, hardware plan or open questions changed.

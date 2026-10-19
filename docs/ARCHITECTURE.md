@@ -74,6 +74,15 @@ server/
     seed_demo.py           synthetic 14-day history + sample profile + demo memories (is_demo=1)
     evaluate_baseline.py   simulation: fixed low line vs personal baseline
     smoke_test.py          real end-to-end run against a live server; also a reference device client
+  evaluation/              evaluation on real data (docs/EVALUATION.md)
+    common.py              paths, CSV, bootstrap/Wilson CIs, Groq calls with rate-limit waits
+    voice_crema.py, voice_analysis.py, voice_tuning.py   voice model on CREMA-D: accuracy, age, masking, 14-day alerts
+    face_utk.py            face model age bias on UTKFace
+    verbal_safety.py       words side + keyword vs LLM self-harm screen
+    conversation_sim.py    LLM-played user vs the real companion code, auto metrics + LLM judge
+    memory_eval.py, latency_bench.py
+    datasets/              (gitignored) CREMA-D, UTKFace
+    results/               summary JSON (committed); raw/ per-item outputs (gitignored)
   tests/                   pytest: masking, fusion, trends, dialogue, companion, API (models stubbed)
     fixtures/              test_clip.wav/.m4a (synthetic, not speech), face_astronaut.jpg (NASA, public domain), noise_no_face.jpg
   data/                    (gitignored) companion.db, audio/, certs/, media/
@@ -365,6 +374,8 @@ device-specific code lives only under `clients/<device>/`.
   models, real Groq. Note: it records a real conversation (clear with `seed_demo.py --clear-all`).
 - `node clients/web/js/vad.test.mjs`: simulated loudness patterns for end-of-answer detection.
 - `python scripts/evaluate_baseline.py [--drop 0.25]`: fixed vs personal low line on synthetic people.
+- `server/evaluation/`: evaluation on real data and simulated conversations; results and how to re-run in
+  [EVALUATION.md](EVALUATION.md). The Groq-based scripts use up the free daily budget.
 - Manual: open the talk page and have a real conversation. The "Show analysis" panel shows every score.
 
 ## 12. Frontend design rules

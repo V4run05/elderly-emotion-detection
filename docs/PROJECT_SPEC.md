@@ -308,7 +308,13 @@ not a code change. The integration design is in [ARCHITECTURE.md §9](ARCHITECTU
    neutral or sad face: shows **masked**, and Asha gently probes instead of moving on.
 4. Back on the dashboard, today's point appears.
 
-**Evaluation to do before the final review:**
+**Done (2026-10-19):** see [EVALUATION.md](EVALUATION.md). Voice model on CREMA-D (4,900 clips, ages 20–74),
+face age bias on UTKFace, words + self-harm screen, 8 simulated conversations, latency. Main results:
+the fixed low line gives 88% false family alerts on real voices; the personal baseline gives 12% false and
+62% of low weeks caught (87% at 6 spoken answers a day); older non-smiling faces read as sad ~2× as often;
+the keyword self-harm screen catches 1 of 12 indirect statements (an LLM screen: 11 of 12).
+
+**Evaluation still to do before the final review:**
 - Scripted test set: teammates record N answers in each condition (sincere-positive,
   masked, openly-low) and we report masking-detection precision/recall per condition.
 - Threshold sweep on that set (`SAYS_OK`, `LOW_NONVERBAL`, `GAP`) to pick defensible values.
@@ -316,22 +322,29 @@ not a code change. The integration design is in [ARCHITECTURE.md §9](ARCHITECTU
 
 ## 12. Known limitations and open questions
 
-1. **Thresholds are uncalibrated.** Chosen by reasoning, not data. Needs the evaluation set in §11.
+1. **Thresholds are only partly calibrated.** Tested on acted speech (CREMA-D, EVALUATION.md §3), not on
+   older adults. Needs the teammate set and a real pilot (§11).
 2. **Models weren't trained on older adults.** Older faces and voices may read as sadder or flatter
    than they are (the "age bias" question from the original proposal). **Partly addressed** by the
-   personal baseline (§6.5), validated on synthetic data only. Remaining risk: if the person is
+   personal baseline (§6.5). Measured (EVALUATION.md §3–4): the voice model shows no clear age trend up to 74
+   but reads all speech as negative (neutral ≈ −0.34); the face model reads non-smiling faces over 50 as sad ~2×
+   as often as faces in their 20s–30s. Remaining risk: if the person is
    already low during the 5 calibration conversations, that becomes their "normal" (reset = clear history).
-3. **Synthetic voices read as sad.** gTTS clips used in testing come out as Sadness on the voice
-   model. Real human recordings are needed to validate behaviour.
+3. **The voice model reads speech as negative.** On real acted speech (CREMA-D) neutral voices average
+   −0.34 and a third are labelled sad; happy speech is recognised only 11% of the time. Sad vs neutral is still
+   separable (AUC 0.75), so only "lower than this person's normal" is meaningful (EVALUATION.md §3).
 4. **English only**, and an Indian-English voice by default (`TTS_EDGE_VOICE=en-IN-NeerjaNeural`).
 5. **Cloud dependency:** Groq (speech-to-text + LLM) and the voice service (edge-tts, an unofficial
    use of Microsoft Edge's read-aloud service) need internet; Groq needs a key. If edge-tts stops
    working, gTTS and then the browser voice take over automatically.
 6. **Anger valence (−0.5)** is a design choice; revisit if anger shows up a lot in real data.
-7. **Self-harm screen is keyword-based.** Treat it as a floor, not a safeguard.
+7. **Self-harm screen is keyword-based.** Measured: 75% of direct and 8% of indirect statements caught
+   (EVALUATION.md §5). An LLM screen (gpt-oss-safeguard-20b) caught 100% / 92% with no false alarms: planned fix.
 8. **Memory can be wrong.** The memory step is an LLM and can mis-summarise; family can remove
    wrong memories on the dashboard. Replies can still occasionally get details wrong.
 9. **English only** for speech recognition, replies and voice, even if the profile lists other languages.
+10. **Free Groq budget runs out** after ~80 replies/day; the companion then answers "I didn't quite catch that"
+    to everything (EVALUATION.md §6–7). Needs a fallback model and an honest message.
 
 ## 13. Feature ideas (backlog)
 

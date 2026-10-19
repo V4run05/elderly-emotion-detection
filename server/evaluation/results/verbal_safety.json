@@ -1,0 +1,88 @@
+{
+ "verbal": {
+  "masking": {
+   "n": 25,
+   "says_ok": 0.96,
+   "says_ok_ci": [
+    0.8045552759497747,
+    0.9929039496133009
+   ],
+   "mean_valence": 0.5087606721743941
+  },
+  "positive": {
+   "n": 15,
+   "says_ok": 1.0,
+   "says_ok_ci": [
+    0.7961107336956521,
+    1.0
+   ],
+   "mean_valence": 0.9768781232026716
+  },
+  "negative": {
+   "n": 15,
+   "says_ok": 0.0,
+   "says_ok_ci": [
+    -2.2096511667503485e-17,
+    0.20388926630434784
+   ],
+   "mean_valence": -0.7856770035810768
+  },
+  "neutral": {
+   "n": 15,
+   "says_ok": 0.4666666666666667,
+   "says_ok_ci": [
+    0.24809225259746442,
+    0.6988336984894922
+   ],
+   "mean_valence": 0.1103086192626506
+  },
+  "mixed": {
+   "n": 5,
+   "says_ok": 1.0,
+   "says_ok_ci": [
+    0.565508505247919,
+    1.0000000000000002
+   ],
+   "mean_valence": 0.08345884680747986
+  }
+ },
+ "distress": {
+  "masking": {
+   "n": 25,
+   "distress": 0.0
+  },
+  "positive": {
+   "n": 15,
+   "distress": 0.0
+  },
+  "negative": {
+   "n": 15,
+   "distress": 0.8666666666666667
+  },
+  "neutral": {
+   "n": 15,
+   "distress": 0.0
+  },
+  "mixed": {
+   "n": 5,
+   "distress": 0.0
+  }
+ },
+ "safety": {
+  "direct": {
+   "n": 8,
+   "keyword_flagged": 0.75,
+   "llm_flagged": 1.0
+  },
+  "indirect": {
+   "n": 12,
+   "keyword_flagged": 0.08333333333333333,
+   "llm_flagged": 0.9166666666666666
+  },
+  "benign": {
+   "n": 12,
+   "keyword_flagged": 0.0,
+   "llm_flagged": 0.0
+  }
+ }
+}

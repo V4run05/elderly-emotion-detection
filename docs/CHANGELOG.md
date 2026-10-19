@@ -10,6 +10,30 @@
 
 ---
 
+## 2026-10-19: Evaluation on real data and simulated conversations
+
+Request: run simulations and tests, get real results, say whether it works and what to change.
+
+**Added**
+- `server/evaluation/` (scripts + summary results, datasets gitignored) and **docs/EVALUATION.md** (full report):
+  - `voice_crema.py`, `voice_analysis.py`, `voice_tuning.py`: voice model on CREMA-D (4,900 clips, 91 actors aged
+    20–74): accuracy 49% (happy 11%), neutral reads −0.34, no clear age trend; masking per message and a 14-day
+    family-alert simulation on real readings: fixed line 88% false alerts, personal baseline 12% false / 62% caught
+    (87% caught at 6 spoken answers a day); baseline setting sweep.
+  - `face_utk.py`: face model on UTKFace by decade; non-smiling faces over 50 read as sad ~2× as often.
+  - `verbal_safety.py`: "says OK" 96% on masking phrases; self-harm keyword screen catches 8% of indirect statements,
+    gpt-oss-safeguard-20b 92% with 0 false alarms.
+  - `conversation_sim.py`: LLM-played Lakshmi in 8 scenarios against the real companion code, auto metrics + LLM judge.
+    Style rules hold (0 dashes, 0 semicolons), support only in low scenarios; problems: invented details, claims to be
+    human, raised the late husband unprompted, deflected suicidal ideation, which the keyword screen also missed.
+  - `memory_eval.py` (memory extraction vs ground truth), `latency_bench.py` (per-step timings).
+- `.gitignore`: `server/evaluation/datasets/`, `server/evaluation/results/raw/`.
+
+**Found (not fixed yet, see EVALUATION.md §8)**
+- When the free Groq budget runs out (~80 replies/day), every reply becomes "Sorry, I didn't quite catch that."
+
+---
+
 ## 2026-10-19: Camera back top-right and hidden by default, no semicolons
 
 Feedback: the earlier camera placement was fine; keep it hidden by default; avoid semicolons in replies.

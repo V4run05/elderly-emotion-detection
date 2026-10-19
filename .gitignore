@@ -26,3 +26,7 @@ archive/
 .idea/
 .DS_Store
 .claude/
+
+# Evaluation datasets (downloaded, large)
+server/evaluation/datasets/
+server/evaluation/results/raw/
