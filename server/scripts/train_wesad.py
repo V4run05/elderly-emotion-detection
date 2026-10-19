@@ -41,28 +41,37 @@ def resample_signal(signal, orig_sr, target_sr):
     else:
         return np.interp(x_target, x_orig, signal)
 
+from scipy.signal import find_peaks
+
 def extract_features(window_data):
     # window_data shape: (N_samples, 5) -> ACC_x, ACC_y, ACC_z, BVP, EDA
-    features = []
     
-    for i in range(5):
-        channel_data = window_data[:, i]
-        features.extend([
-            np.mean(channel_data),
-            np.std(channel_data),
-            np.min(channel_data),
-            np.max(channel_data),
-            # peak-to-peak
-            np.ptp(channel_data)
-        ])
-    return features
+    # 1. Accel Magnitude (in g)
+    acc_x = window_data[:, 0]
+    acc_y = window_data[:, 1]
+    acc_z = window_data[:, 2]
+    # Calculate magnitude, subtracting 1g for baseline movement
+    acc_mag = np.mean(np.sqrt(acc_x**2 + acc_y**2 + acc_z**2))
+    
+    # 2. Heart Rate (from BVP)
+    bvp = window_data[:, 3]
+    # BVP is at TARGET_SR (32Hz). Max HR 220 BPM = 3.66 Hz = ~8.7 samples
+    peaks, _ = find_peaks(bvp, distance=8)
+    hr_bpm = len(peaks) * (60.0 / WINDOW_SEC)
+    
+    # Clean up noisy HR
+    if hr_bpm < 40: hr_bpm = 40
+    if hr_bpm > 200: hr_bpm = 200
+        
+    return [hr_bpm, acc_mag]
 
 def load_subject_data(subject_path):
     with open(subject_path, 'rb') as f:
         data = pickle.load(f, encoding='latin1')
     
     wrist = data['signal']['wrist']
-    acc = wrist['ACC'] # 32 Hz
+    # WESAD Wrist ACC is scaled such that 64 = 1g. Convert to g to match dashboard.
+    acc = wrist['ACC'] / 64.0 # 32 Hz
     bvp = wrist['BVP'] # 64 Hz
     eda = wrist['EDA'] # 4 Hz
     

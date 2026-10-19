@@ -7,9 +7,15 @@ Outputs a prediction mapped to the 4-class taxonomy, along with a quality score.
 import os
 import joblib
 import numpy as np
+from scipy.signal import find_peaks
 
 _model = None
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "rf_model.pkl")
+
+# Must match TARGET_SR in scripts/train_wesad.py -- the BVP peak-finding below assumes the
+# incoming bvp array is sampled at this rate, since live payloads don't carry their own
+# sample rate.
+TARGET_SR = 32
 
 # If the model uses the 4 classes: Anger, Happiness, Neutral, Sadness
 CLASSES = ["Anger", "Happiness", "Neutral", "Sadness"]
@@ -21,28 +27,25 @@ def _load():
 
 def extract_features(sensor_data):
     """
-    sensor_data: dict with arrays for 'acc_x', 'acc_y', 'acc_z', 'bvp', 'gsr'
-    In the simulation, we might receive short windows or single points.
-    We need to extract the 25 features matching the training script:
-    mean, std, min, max, ptp for each of the 5 channels.
+    sensor_data: dict with arrays for 'acc_x', 'acc_y', 'acc_z', 'bvp', 'gsr'.
+    Must match scripts/train_wesad.py's extract_features(): [hr_bpm, acc_mag], where hr_bpm is
+    estimated by counting BVP peaks and acc_mag is the mean 3-axis accelerometer magnitude.
     """
-    channels = ['acc_x', 'acc_y', 'acc_z', 'bvp', 'gsr']
-    features = []
-    
-    for ch in channels:
-        data = np.array(sensor_data.get(ch, [0.0]))
-        if len(data) == 0:
-            data = np.array([0.0])
-            
-        features.extend([
-            np.mean(data),
-            np.std(data),
-            np.min(data),
-            np.max(data),
-            np.ptp(data)
-        ])
-        
-    return np.array([features])
+    acc_x = np.array(sensor_data.get('acc_x', [0.0]))
+    acc_y = np.array(sensor_data.get('acc_y', [0.0]))
+    acc_z = np.array(sensor_data.get('acc_z', [0.0]))
+    acc_mag = float(np.mean(np.sqrt(acc_x**2 + acc_y**2 + acc_z**2)))
+
+    bvp = np.array(sensor_data.get('bvp', [0.0]))
+    if len(bvp) < 2:
+        hr_bpm = 70.0
+    else:
+        peaks, _ = find_peaks(bvp, distance=8)
+        duration_sec = len(bvp) / TARGET_SR
+        hr_bpm = len(peaks) * (60.0 / duration_sec)
+        hr_bpm = min(200.0, max(40.0, hr_bpm))
+
+    return np.array([[hr_bpm, acc_mag]])
 
 def calculate_quality_score(sensor_data) -> float:
     """Calculate quality score based on signal stability.
