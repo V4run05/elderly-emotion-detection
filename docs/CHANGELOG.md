@@ -10,6 +10,47 @@
 
 ---
 
+## 2026-10-19: Fixes from the evaluation (safety, LLM budget, baseline, invention)
+
+Request: make all the changes the evaluation recommended, using only the data we have (no older adults
+available yet). Re-tested results in EVALUATION.md §11.
+
+**Changed**
+- **Self-harm screen** (`analysis/safety.py`): keyword regex + LLM screen (`gpt-oss-safeguard-20b`, then
+  gpt-oss-20b, qwen3.8-27b) on every message, with the last 3 messages and the profile's losses as context,
+  run in parallel with the reply. A flag replaces the reply with a fixed `llm.safety_reply()` (helpline:
+  Tele-MANAS 14416, configurable) and later replies follow `SAFETY_FOLLOWUP`. A screen result that arrives
+  late still flags the message. Re-test: 100% of direct and indirect statements on a new held-out set, 0
+  false alarms (keywords alone: 33% / 0%). A prompt tweak that cut context false alarms was rejected: it
+  missed one real risk.
+- **LLM budget:** 20b is asked only if 120b hasn't answered after 1.5 s (was: both at once, double tokens);
+  rate-limited models go on cooldown and replies move to `LLM_BACKUP_MODELS` (qwen3.8-27b, reasoning off);
+  if nothing answers the reply says "I'm having a little trouble thinking right now…" instead of "I didn't
+  catch that". `/api/health` and the dashboard show when a backup is in use.
+- **Fixed low line −0.20 → −0.55** until the baseline is ready (measured: −0.20 flagged 75% of calm "I'm fine"
+  answers; −0.55 flags 17%, 7% false alerts).
+- **Personal baseline per channel** (voice, face), 7 calibration conversations (was 5, fused), the **voice
+  decides** (`BASELINE_COMBINE=voice`). New session columns `voice_valence`, `face_valence`, `readings`
+  (backfilled at startup); days weighted by readings.
+- **Readings** need ≥ 0.4 s of speech (`audio.speech_seconds`); a higher cut-off would mostly drop sad answers.
+- **Words:** Indian-English reassurances ("okay only", "what to say", "all good"); "I'm fine, but I miss him"
+  counts as opening up (emotion word or clearly negative clause after but/though/just).
+- **Prompt:** Asha is an app (no body, family, senses, past); only facts from notes or this conversation; gently
+  correct confusion; drop a joke when they move on; greeting hook in its own sentence.
+- **Sensitive topics enforced in code:** names from the profile's sensitive topics are hidden from the LLM
+  (profile, memories, greeting hook) until the person mentions them in the conversation.
+- Memory prompt: visitors count as social contact; skipping meals = poor appetite.
+
+**Fixed**
+- Typed-only days were dropped from the daily series, so a typed self-harm disclosure never raised the
+  urgent alert.
+
+**Added**
+- `evaluation/voice_short.py`, `voice_length.py`, `channel_sim.py`, `safety_context.py`; held-out and context
+  safety sets in `verbal_safety.py`; `tests/test_evaluation_fixes.py` (26 tests).
+
+---
+
 ## 2026-10-19: Evaluation on real data and simulated conversations
 
 Request: run simulations and tests, get real results, say whether it works and what to change.

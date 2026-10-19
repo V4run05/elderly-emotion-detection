@@ -21,9 +21,16 @@ def sessions(values):
 
 
 # ---------------------------------------------------------------- baseline
+@pytest.fixture(autouse=True)
+def _five_calibration_sessions(monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "BASELINE_SESSIONS", 5)
+
+
 def test_baseline_not_ready_uses_fixed_line():
     b = baseline.compute(sessions([0.0, 0.0]))
-    assert not b["ready"] and b["low_threshold"] == -0.20
+    from app import config
+    assert not b["ready"] and b["low_threshold"] == config.LOW_NONVERBAL_THRESHOLD == -0.55
 
 
 def test_baseline_for_person_who_reads_sad():
@@ -129,16 +136,20 @@ def test_support_only_when_needed():
 def test_conversation_summary_uses_daily_answer_and_spoken_messages():
     from app.services.conversation import summarize
 
-    def turn(verbal, nonverbal, context="chat", input_kind="voice", available=True, phrases=()):
+    def turn(verbal, nonverbal, context="chat", input_kind="voice", available=True, phrases=(),
+             transcript="I am fine thank you"):
         return {"verbal_valence": verbal, "nonverbal_valence": nonverbal, "context": context,
-                "input": input_kind, "safety_flag": 0,
-                "analysis": {"verbal": {"reassurance": list(phrases)}, "nonverbal": {"available": available}}}
-    turns = [turn(0.7, -0.5, "wellbeing", phrases=["I'm fine"]),   # the daily answer
-             turn(-0.4, -0.3),                                    # chat about a sad film
+                "input": input_kind, "safety_flag": 0, "transcript": transcript,
+                "analysis": {"verbal": {"reassurance": list(phrases)},
+                             "nonverbal": {"available": available, "voice_valence": nonverbal, "face_valence": None}}}
+    turns = [turn(0.7, -0.7, "wellbeing", phrases=["I'm fine"]),   # the daily answer
+             turn(-0.4, -0.5),                                    # chat about a sad film
+             turn(0.3, 0.9, transcript="Hmm."),                   # too short to count as a reading
              turn(0.9, 0.0, input_kind="typed", available=False)]  # typed: no seemed
     s = summarize(turns)
     assert s["verbal_valence"] == 0.7                 # "said" = the daily answer
-    assert s["nonverbal_valence"] == -0.4             # "seemed" = mean of the two spoken messages
+    assert s["nonverbal_valence"] == -0.6             # "seemed" = mean of the two spoken readings
+    assert s["voice_valence"] == -0.6 and s["face_valence"] is None and s["readings"] == 2
     assert s["status"] == "masked"
     typed_only = summarize([turn(0.5, 0.0, input_kind="typed", available=False)])
     assert typed_only["nonverbal_valence"] is None

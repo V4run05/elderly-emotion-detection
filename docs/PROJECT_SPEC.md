@@ -102,7 +102,7 @@ Current phase: **laptop version for testing and demos** (Pi integration next, se
 | Signal | Model | Output |
 |---|---|---|
 | Words | Groq Whisper `whisper-large-v3` (speech→text), then `cardiffnlp/twitter-roberta-base-sentiment-latest` | verbal valence = P(positive) − P(negative), in [−1, 1] |
-| Reassurance | Regex list of minimising phrases ([masking.py](../server/app/analysis/masking.py)) | list of phrases found |
+| Reassurance | Regex list of minimising phrases, incl. Indian English ("okay only", "what to say") ([masking.py](../server/app/analysis/masking.py)) | list of phrases found |
 | Voice tone | `autrainer/msp-podcast-emo-class-big4-w2v2-l-emo` (wav2vec2-large, trained on real, unscripted podcast speech) | 4-class probabilities |
 | Face | OpenCV YuNet face detector + `trpakov/vit-face-expression` (ViT, 7 classes reduced to 4) | 4-class probabilities, averaged over frames |
 
@@ -115,14 +115,19 @@ Shared 4 classes: **Anger, Happiness, Neutral, Sadness.**
 - **Fusion** of voice and face: weight wᵢ = qualityᵢ × confidenceᵢ, normalised, then a per-class
   weighted average. Voice quality = loudness (RMS) of the clip. Face quality = share of frames
   with a face × detector score. A missing channel drops out.
-- **Non-verbal valence** = valence of the fused distribution, in [−1, 1].
+- **Non-verbal valence** = valence of the fused distribution, in [−1, 1]. The voice and face valences
+  are also kept separately for the personal baseline (§6.5).
+- **Readings:** a spoken message counts as a reading only with at least `MIN_READING_SECONDS` (0.4 s) of
+  actual speech, which drops near-empty readings ("hmm"). Measured on whole clips: sad vs neutral AUC stays 0.75–0.79 from 0.6 s of speech up; a higher cut-off would mostly drop sad answers, because quiet speech measures shorter.
+- **"I'm fine, but…":** if a reassurance is followed by "but / though / except / just" and the part after it has an
+  emotion word ("miss", "lonely") or reads clearly negative (≤ −0.4), that part counts and it isn't a reassurance (they are opening up). Mild minimising ("just a bit tired") stays a reassurance.
 
 ### 6.3 The masking rule (same rule for an answer, a session and a day)
 
 | Term | Definition | Default |
 |---|---|---|
 | says OK | verbal valence ≥ `SAYS_OK_THRESHOLD` **or** a reassurance phrase was used | 0.10 |
-| seems low | non-verbal valence ≤ the **personal low line** (§6.5); before calibration, `LOW_NONVERBAL_THRESHOLD` | −0.20 until calibrated |
+| seems low | below the person's own normal by the personal drop (§6.5); before calibration, fused valence ≤ `LOW_NONVERBAL_THRESHOLD` | −0.55 until calibrated (measured, EVALUATION.md §3) |
 | openly not OK | verbal valence ≤ `NEGATIVE_VERBAL_THRESHOLD` | −0.20 |
 | gap | verbal − non-verbal ≥ `MASKING_GAP_THRESHOLD` | 0.50 |
 
@@ -132,8 +137,9 @@ Shared 4 classes: **Anger, Happiness, Neutral, Sadness.**
 
 Masking score (0–1) for display = gap ÷ 2, counted only when the person presents as OK.
 
-A **session** uses the averages of its answers; a **day** uses the averages of its sessions.
-Both are classified with the same rule.
+A **session** uses the averages of its readings; a **day** uses the averages of its sessions, weighted
+by their number of readings. Both are classified with the same rule. Typed-only days have no reading
+but still count for the safety flag.
 
 ### 6.4 Family alert levels
 
@@ -148,7 +154,8 @@ Computed over the last `ALERT_WINDOW_DAYS` (7) calendar days:
 | **none** | no conversations yet |
 
 All numbers live in [server/app/config.py](../server/app/config.py) and can be overridden via `.env`.
-**They are first-pass heuristics, not calibrated** (see §12).
+The low line, the baseline settings and the reading length were set from the evaluation on real
+data (EVALUATION.md); the alert counts are still heuristics (see §12).
 
 ### 6.5 Personal baseline
 
@@ -156,11 +163,27 @@ The voice and face models were trained mostly on younger, expressive people. For
 they may read every day as flat (≈0) or even sad (<0). A fixed low line then never fires for a
 "flat" person, or fires every day for a "reads sad" person.
 
-- **Calibration:** the first `BASELINE_SESSIONS` (5) analysed conversations.
-- **normal** = median non-verbal valence; **spread** = 1.4826 × median absolute deviation.
-- **personal low line** = normal − max(`BASELINE_MIN_DROP` 0.12, `BASELINE_SPREAD_K` 2 × spread),
-  never above `BASELINE_MAX_LOW_LINE` (0.0), so a clearly positive reading is never "low".
-- Before calibration the fixed −0.20 is used. The dashboard says which line is in use.
+- **Per channel:** voice and face each get their own baseline from the first `BASELINE_SESSIONS` (7)
+  conversations with a reading on that channel. The two sit at very different levels (voice ≈ −0.3, face
+  ≈ +0.3), so one fused baseline moved whenever the camera was off or the face wasn't found.
+- **normal** = median valence; **spread** = 1.4826 × median absolute deviation; **drop** =
+  max(`BASELINE_MIN_DROP` 0.12, `BASELINE_SPREAD_K` 2 × spread).
+- **Seems low** = the reading is at least *drop* below normal. `BASELINE_COMBINE=voice`: the voice decides,
+  the face only when there is no voice reading. The masking rule then runs on "compared with normal"
+  (normal = 0).
+- Before calibration the fixed −0.55 is used on the fused value. The dashboard says which is in use.
+- **Why voice decides** (`evaluation/channel_sim.py`: real CREMA-D voices + real faces of people 60+,
+  14 days, 3 answers a day, the face kept normal during the low week, i.e. masking):
+
+| Camera | Old fused baseline | Average of channels | Either channel | **Voice decides** |
+|---|---|---|---|---|
+| always on | 27% caught / 8% false | 16% / 4% | 78% / 22% | **72% / 7%** |
+| on some days | 72% / **36%** | 50% / 5% | 72% / 17% | **70% / 9%** |
+| on only after calibration | **2%** / 0% | 71% / 8% | 71% / 8% | **71% / 8%** |
+
+  Averaging dilutes the drop in the voice when the face stays normal; "either channel" doubles false
+  alerts (the simulated faces vary more than one real person's would, so this may overstate it).
+  k = 1.5 would catch 86% but with 14% false alerts; we chose fewer false alerts.
 
 **Evaluation** (`server/scripts/evaluate_baseline.py`, synthetic): 300 people per profile; everyone
 keeps *saying* they're fine; half stay well, half drop by 0.25 after week 1 (results for drops of

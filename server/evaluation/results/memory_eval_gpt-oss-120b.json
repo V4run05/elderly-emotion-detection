@@ -1,0 +1,13 @@
+{
+ "model": "openai/gpt-oss-120b",
+ "conversations": 6,
+ "fact_recall": 1.0,
+ "n_facts": 7,
+ "date_correct": 1.0,
+ "conversations_with_forbidden": 0.0,
+ "items_per_conversation": 2.1666666666666665,
+ "small_talk_items": 0.0,
+ "signal_accuracy": 0.7142857142857143,
+ "reminder_accuracy": 1.0,
+ "note": "date_correct recomputed with the fixed scorer (prefers the dated memory when several match)"
+}

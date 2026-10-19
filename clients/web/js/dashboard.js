@@ -311,10 +311,34 @@ function renderWellbeing(w) {
 // ---------- personal baseline note ----------
 function renderBaselineNote(b) {
   const note = $('baseline-note');
-  if (!b.enabled) { note.textContent = 'Low line: fixed at −0.20 (personal baseline switched off).'; return; }
-  note.textContent = b.ready
-    ? `Low line is personal: ${data.elder_name}'s normal is ${signed(b.normal)} (spread ${b.spread.toFixed(2)}), so “low” means ${signed(b.low_threshold)} or below.`
-    : `Learning ${data.elder_name}'s normal: ${b.sessions} of ${b.needed} conversations so far. Until then the low line is fixed at ${signed(b.low_threshold)}.`;
+  const today = data.series[data.series.length - 1];
+  const readings = today && today.readings
+    ? ` Today: ${today.readings} spoken ${today.readings === 1 ? 'answer' : 'answers'} read (more answers make the day more reliable).`
+    : '';
+  if (!b.enabled) {
+    note.textContent = `Low line: fixed at ${signed(b.low_threshold)} (personal baseline switched off).${readings}`;
+  } else if (b.mode === 'channels') {
+    const parts = [['voice', 'voice'], ['face', 'face']]
+      .filter(([c]) => b.channels[c].ready)
+      .map(([c, label]) => `${label} ${signed(b.channels[c].normal)}`);
+    note.textContent = `“Seemed low” is judged against ${data.elder_name}'s own normal (${parts.join(', ')}): ` +
+      `a drop of ${(-b.low_threshold).toFixed(2)} or more.${readings}`;
+  } else if (b.ready) {
+    note.textContent = `Low line is personal: ${data.elder_name}'s normal is ${signed(b.normal)} (spread ${b.spread.toFixed(2)}), so “low” means ${signed(b.low_threshold)} or below.${readings}`;
+  } else {
+    note.textContent = `Learning ${data.elder_name}'s normal: ${b.sessions} of ${b.needed} conversations so far. ` +
+      `Until then only clearly low readings count (below ${signed(b.low_threshold)}).${readings}`;
+  }
+}
+
+// ---------- companion model status ----------
+function renderLlmNote(s) {
+  const note = $('llm-note');
+  if (!s || !s.degraded) { note.classList.add('hidden'); return; }
+  note.classList.remove('hidden');
+  note.textContent = s.unavailable
+    ? `${data.companion_name} can't reach its language model right now (usage limit reached). Replies will say so until it's back.`
+    : `${data.companion_name} is using a backup language model (usage limit on the usual one). Replies may feel a little different.`;
 }
 
 // ---------- memories ----------
@@ -372,6 +396,7 @@ async function load() {
   renderReminders(data.reminders);
   renderWellbeing(data.wellbeing);
   renderBaselineNote(data.baseline);
+  renderLlmNote(data.llm);
   renderMemories(data.memories);
 }
 

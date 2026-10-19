@@ -15,44 +15,64 @@ Alert levels, most severe first:
 from datetime import date, datetime, timedelta
 
 from app import config
-from app.analysis import masking
+from app.analysis import baseline, masking
 
 
 def session_day(session: dict) -> date:
     return datetime.fromisoformat(session["started_at"]).date()
 
 
+def _weighted(sessions: list, key: str) -> float | None:
+    """Mean of a session value, weighted by how many spoken readings each session had."""
+    pairs = [(s[key], s.get("readings") or 1) for s in sessions if s.get(key) is not None]
+    total = sum(w for _, w in pairs)
+    return sum(v * w for v, w in pairs) / total if total else None
+
+
 def daily_series(sessions: list, days: int, today: date,
-                 low_threshold: float | None = None) -> list:
+                 low_threshold: float | None = None, base: dict | None = None) -> list:
     """One entry per calendar day (oldest first), including days with no conversation.
-    low_threshold: personal low line from analysis/baseline.py (fixed default if None)."""
+    base: from analysis/baseline.compute(); the day is judged against the person's normal per
+    channel. Without it, low_threshold (or the fixed default) is used on the fused value.
+    Typed-only days have no reading but still count for the safety flag."""
     by_day: dict = {}
     for s in sessions:
-        if s.get("verbal_valence") is None or s.get("nonverbal_valence") is None:
+        if s.get("verbal_valence") is None and not s.get("safety_flag"):
             continue  # session never got an analysed answer
         by_day.setdefault(session_day(s), []).append(s)
 
     series = []
     for offset in range(days - 1, -1, -1):
         day = today - timedelta(days=offset)
-        day_sessions = by_day.get(day, [])
+        all_sessions = by_day.get(day, [])
+        day_sessions = [s for s in all_sessions if s.get("nonverbal_valence") is not None
+                        and s.get("verbal_valence") is not None]
+        flagged = any(s.get("safety_flag") for s in all_sessions)
         if not day_sessions:
             series.append({"date": day.isoformat(), "checkins": 0, "verbal_valence": None,
                            "nonverbal_valence": None, "masking_score": None, "status": None,
-                           "safety_flag": False})
+                           "vs_normal": None, "readings": 0, "safety_flag": flagged})
             continue
         verbal = sum(s["verbal_valence"] for s in day_sessions) / len(day_sessions)
-        nonverbal = sum(s["nonverbal_valence"] for s in day_sessions) / len(day_sessions)
+        nonverbal = _weighted(day_sessions, "nonverbal_valence")
         reassurance = any(s.get("reassurance") for s in day_sessions)
-        result = masking.analyse(verbal, nonverbal, ["x"] if reassurance else [], low_threshold)
+        if base is not None:
+            j = baseline.judge(base, nonverbal, _weighted(day_sessions, "voice_valence"),
+                               _weighted(day_sessions, "face_valence"))
+            value, low, vs_normal = j["value"], j["low_threshold"], (j["value"] if j["relative"] else None)
+        else:
+            value, low, vs_normal = nonverbal, low_threshold, None
+        result = masking.analyse(verbal, value, ["x"] if reassurance else [], low)
         series.append({
             "date": day.isoformat(),
             "checkins": len(day_sessions),
             "verbal_valence": round(verbal, 3),
             "nonverbal_valence": round(nonverbal, 3),
+            "vs_normal": vs_normal,
+            "readings": sum(s.get("readings") or 1 for s in day_sessions),
             "masking_score": round(result["masking_score"], 3),
             "status": result["status"],
-            "safety_flag": any(s.get("safety_flag") for s in day_sessions),
+            "safety_flag": flagged,
         })
     return series
 

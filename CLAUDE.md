@@ -16,13 +16,14 @@ on a dashboard. Hardware requirement: a **Raspberry Pi** (integration is the nex
   interrupt, camera preview hidden by default
 - companion: profile from the setup page or a spoken "get to know you", memory, reminders, support
   only when needed, the daily "how are you feeling?" once a day
-- analysis: masking check, personal baseline, family dashboard with alerts
-- demo data and tests (50 pytest + 7 VAD scenarios)
-- evaluation on real data (CREMA-D voices, UTKFace faces, simulated conversations): see
-  [docs/EVALUATION.md](docs/EVALUATION.md). Main findings: the personal baseline is essential, the keyword
-  self-harm screen misses indirect statements, and the free Groq budget runs out (~80 replies/day)
+- analysis: masking check, personal baseline per channel (voice decides), family dashboard with alerts
+- safety: keyword + LLM self-harm screen with fixed safe replies; LLM fallback chain with an honest message
+- demo data and tests (76 pytest + 7 VAD scenarios)
+- evaluation on real data (CREMA-D voices, UTKFace faces, simulated conversations) and the fixes it led to,
+  re-tested: see [docs/EVALUATION.md](docs/EVALUATION.md) §0 and §11
 
-Next: the fixes in EVALUATION.md §8 (LLM safety screen, honest fallback), test with real voices and faces, calibrate thresholds, try a phone as the device, then the
+Next: re-run the conversation simulation on the production models when the Groq budget allows, test with
+real voices and faces (no older adults available yet), try a phone as the device, then the
 Raspberry Pi integration. Check the top of [docs/CHANGELOG.md](docs/CHANGELOG.md) for the latest.
 
 ## Where to look
@@ -76,10 +77,15 @@ node ..\clients\web\js\vad.test.mjs                # listening/VAD scenarios
 4. **Don't relitigate settled choices without new evidence** (reasons in ARCHITECTURE §10):
    autrainer voice model run in-process; RoBERTa *sentiment* (not 7-class emotion) for words;
    YuNet face detection; quality×confidence fusion with no salience boost; Groq gpt-oss-120b
-   hedged with 20b (3 s), `max_tokens=400`, `reasoning_effort=low`, `tool_use_failed` retry; Whisper large-v3 with
+   hedged with 20b (20b only asked after 1.5 s, 120b preferred up to 3 s), then backup qwen3.8-27b, models on
+   cooldown while rate-limited, an honest "having trouble" reply if none answers; `max_tokens=400`,
+   `reasoning_effort=low`, `tool_use_failed` retry; Whisper large-v3 with
    **no prompt** (a prompt made it invent text); edge-tts Neerja voice (gTTS fallback); ffmpeg decoding;
    end-of-answer detection in `clients/web/js/vad.js` (tested by `vad.test.mjs`); personal baseline
-   (validated by `evaluate_baseline.py`); memory extraction with gpt-oss-120b + strict JSON; the
+   per channel with the voice deciding, 7 calibration conversations, fixed line −0.55 before that, readings
+   need ≥ 0.4 s of speech (all measured, EVALUATION.md); self-harm screen = keywords + gpt-oss-safeguard-20b
+   with a fixed safety reply (never LLM-improvised); sensitive-topic names hidden from the LLM until the
+   person brings them up; memory extraction with gpt-oss-120b + strict JSON; the
    server (not the LLM) picks the greeting hook; replies forced to English; emotional support only
    when `plan.support` says so (never from single-message readings); `llm.tidy()` strips dashes/markdown.
 5. **Run `pytest` after changes**; run `smoke_test.py` when touching models, dialogue or the pipeline.

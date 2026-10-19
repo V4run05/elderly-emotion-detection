@@ -7,6 +7,7 @@ DEFAULT, and the names fall back to ELDER_NAME / COMPANION_NAME from config.
 """
 
 import copy
+import re
 from datetime import datetime
 
 from app import config
@@ -131,8 +132,52 @@ def voice(p: dict) -> str:
     return p["companion"]["voice"] or config.TTS_EDGE_VOICE
 
 
-def describe(p: dict) -> str:
-    """The profile as plain text for the LLM's system prompt (empty fields are skipped)."""
+# --- Sensitive topics (enforced in code, not only by the prompt) -------------------------------
+# In testing the LLM brought up the late husband by name unprompted (docs/EVALUATION.md §6). So until
+# the person mentions a sensitive topic in this conversation, its names are left out of everything
+# the LLM sees (profile, memories, greeting hook) and only a generic "don't raise it" rule remains.
+_NOT_NAMES = {"Her", "His", "Their", "The", "She", "He", "They", "Let", "Don't", "Never", "Only", "When",
+              "If", "And", "But", "Please", "Avoid", "Do", "Not", "Late", "My", "Our", "Talk", "Him", "Them"}
+_RELATIONS = ("husband", "wife", "son", "daughter", "mother", "father", "brother", "sister", "partner",
+              "grandson", "granddaughter", "friend", "dog", "cat", "pet")
+
+
+def sensitive_names(p: dict) -> set:
+    """Capitalised names in the sensitive-topics field, e.g. {"Raman"}."""
+    words = re.findall(r"\b[A-Z][a-z]{2,}\b", p.get("sensitive_topics", ""))
+    return {w for w in words if w not in _NOT_NAMES}
+
+
+def sensitive_terms(p: dict) -> set:
+    """Names plus relation words used in the sensitive topics ("husband"), lowercase."""
+    text = p.get("sensitive_topics", "").lower()
+    return {n.lower() for n in sensitive_names(p)} | {r for r in _RELATIONS if re.search(rf"\b{r}\b", text)}
+
+
+def sensitive_opened(p: dict, user_texts: list) -> bool:
+    """True if the person themself brought up a sensitive topic in these messages."""
+    terms = sensitive_terms(p)
+    joined = " ".join(user_texts).lower()
+    return any(re.search(rf"\b{re.escape(t)}\b", joined) for t in terms)
+
+
+def mentions_sensitive(p: dict, text: str) -> bool:
+    return any(re.search(rf"\b{re.escape(n)}\b", text or "") for n in sensitive_names(p))
+
+
+def _scrub(text: str, names: set) -> str:
+    """Drops the sentences that name a sensitive person."""
+    if not names or not text:
+        return text
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    return " ".join(x for x in parts if not any(re.search(rf"\b{re.escape(n)}\b", x) for n in names))
+
+
+def describe(p: dict, sensitive_open: bool = True) -> str:
+    """The profile as plain text for the LLM's system prompt (empty fields are skipped).
+    sensitive_open=False: the sensitive topic hasn't come up in this conversation, so its names
+    are removed everywhere and only a generic "don't raise it" rule is given."""
+    hide = set() if sensitive_open else sensitive_names(p)
     e, name = p["elder"], elder_name(p)
     lines = [f"About {name}:"]
     facts = [
@@ -144,26 +189,41 @@ def describe(p: dict) -> str:
     if any(facts):
         lines.append("- " + ", ".join(f for f in facts if f))
     for label, value in (("Background", e["background"]), ("Living situation", e["living"])):
+        value = _scrub(value, hide)
         if value:
             lines.append(f"- {label}: {value}")
-    if p["people"]:
+    people = [x for x in p["people"] if x["name"] not in hide]
+    if people:
         lines.append(f"People in {name}'s life:")
-        for person in p["people"]:
-            extra = f": {person['notes']}" if person["notes"] else ""
+        for person in people:
+            notes = _scrub(person["notes"], hide)
+            extra = f": {notes}" if notes else ""
             bday = f" (birthday {person['birthday']})" if person["birthday"] else ""
             lines.append(f"- {person['name']} ({person['relation'] or 'relation unknown'}){bday}{extra}")
     r = p["routine"]
     routine = ", ".join(x for x in (f"wakes around {r['wake_time']}" if r["wake_time"] else "",
                                     f"sleeps around {r['sleep_time']}" if r["sleep_time"] else "") if x)
-    if routine or r["daily"]:
-        lines.append(f"Daily life: {'; '.join(x for x in (routine, r['daily']) if x)}")
+    daily = _scrub(r["daily"], hide)
+    if routine or daily:
+        lines.append(f"Daily life: {'; '.join(x for x in (routine, daily) if x)}")
     for label, key in (("Enjoys", "interests"), ("Things that cheer them up", "cheer_up"),
                        ("Activities to suggest", "activities")):
-        if p[key]:
-            lines.append(f"{label}: {p[key]}")
+        value = _scrub(p[key], hide)
+        if value:
+            lines.append(f"{label}: {value}")
     if p["health_notes"]:
         lines.append(f"Health notes (be gentle, never give medical advice): {p['health_notes']}")
     if p["sensitive_topics"]:
-        lines.append(f"Sensitive topics (never raise these yourself; if they bring one up, "
-                     f"listen kindly): {p['sensitive_topics']}")
+        if sensitive_open:
+            lines.append("Sensitive topics (they brought this up: listen kindly, follow their lead, don't push): "
+                         f"{p['sensitive_topics']}")
+        else:
+            lines.append("Sensitive topics: there is something painful in their life (such as a loss). Never "
+                         "bring up death, loss, grief or late family members yourself. If they bring it up, "
+                         "listen kindly.")
     return "\n".join(lines)
+
+
+def safety_background(p: dict) -> str:
+    """Context for the self-harm screen (names included, never shown to the companion LLM)."""
+    return " ".join(x for x in (p["elder"]["living"], p["sensitive_topics"]) if x)

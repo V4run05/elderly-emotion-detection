@@ -2,10 +2,10 @@
  "verbal": {
   "masking": {
    "n": 25,
-   "says_ok": 0.96,
+   "says_ok": 1.0,
    "says_ok_ci": [
-    0.8045552759497747,
-    0.9929039496133009
+    0.8668035060468212,
+    1.0
    ],
    "mean_valence": 0.5087606721743941
   },
@@ -38,12 +38,12 @@
   },
   "mixed": {
    "n": 5,
-   "says_ok": 1.0,
+   "says_ok": 0.0,
    "says_ok_ci": [
-    0.565508505247919,
-    1.0000000000000002
+    -3.139202815737979e-17,
+    0.43449149475208104
    ],
-   "mean_valence": 0.08345884680747986
+   "mean_valence": -0.5049893634021283
   }
  },
  "distress": {
@@ -65,24 +65,51 @@
   },
   "mixed": {
    "n": 5,
-   "distress": 0.0
+   "distress": 0.2
   }
  },
  "safety": {
   "direct": {
    "n": 8,
-   "keyword_flagged": 0.75,
-   "llm_flagged": 1.0
+   "keyword_flagged": 1.0,
+   "llm_flagged": 1.0,
+   "combined_flagged": 1.0
   },
   "indirect": {
    "n": 12,
-   "keyword_flagged": 0.08333333333333333,
-   "llm_flagged": 0.9166666666666666
+   "keyword_flagged": 0.25,
+   "llm_flagged": 1.0,
+   "combined_flagged": 1.0
   },
   "benign": {
    "n": 12,
    "keyword_flagged": 0.0,
-   "llm_flagged": 0.0
+   "llm_flagged": 0.0,
+   "combined_flagged": 0.0
   }
+ },
+ "safety_holdout": {
+  "direct": {
+   "n": 6,
+   "keyword_flagged": 0.3333333333333333,
+   "llm_flagged": 1.0,
+   "combined_flagged": 1.0
+  },
+  "indirect": {
+   "n": 10,
+   "keyword_flagged": 0.0,
+   "llm_flagged": 1.0,
+   "combined_flagged": 1.0
+  },
+  "benign": {
+   "n": 10,
+   "keyword_flagged": 0.0,
+   "llm_flagged": 0.0,
+   "combined_flagged": 0.0
+  }
+ },
+ "safety_context": {
+  "n": 6,
+  "correct": 0.5
  }
 }

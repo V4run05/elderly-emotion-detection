@@ -43,7 +43,7 @@ def test_healthy_week_is_ok():
 
 
 def test_masked_pattern_raises_alert():
-    sessions = [session(d, 0.6, -0.5) for d in range(4)] + [session(d, 0.7, 0.3) for d in range(4, 7)]
+    sessions = [session(d, 0.6, -0.7) for d in range(4)] + [session(d, 0.7, 0.3) for d in range(4, 7)]
     _, alert = run(sessions)
     assert alert["level"] == "alert"
     assert alert["masked_days"] == 4
@@ -51,7 +51,7 @@ def test_masked_pattern_raises_alert():
 
 
 def test_two_concerning_days_is_watch():
-    sessions = [session(0, 0.6, -0.5), session(1, -0.6, -0.4)] + [session(d, 0.7, 0.3) for d in range(2, 7)]
+    sessions = [session(0, 0.6, -0.7), session(1, -0.6, -0.4)] + [session(d, 0.7, 0.3) for d in range(2, 7)]
     _, alert = run(sessions)
     assert alert["level"] == "watch"
 

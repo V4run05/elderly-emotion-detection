@@ -1,0 +1,7 @@
+{
+ "context_correct": 0.6666666666666666,
+ "holdout_indirect_flagged": 0.9,
+ "holdout_benign_flagged": 0.0,
+ "indirect_flagged": 1.0,
+ "benign_flagged": 0.0
+}

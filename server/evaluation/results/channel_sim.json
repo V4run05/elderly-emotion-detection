@@ -1,0 +1,68 @@
+{
+ "always/fused": {
+  "sad_week": 0.27289377289377287,
+  "control_week": 0.07509157509157509
+ },
+ "always/channels/mean": {
+  "sad_week": 0.16117216117216118,
+  "control_week": 0.04212454212454212
+ },
+ "always/channels/any": {
+  "sad_week": 0.7802197802197802,
+  "control_week": 0.21611721611721613
+ },
+ "always/channels/voice": {
+  "sad_week": 0.7216117216117217,
+  "control_week": 0.06776556776556776
+ },
+ "intermittent/fused": {
+  "sad_week": 0.7197802197802198,
+  "control_week": 0.3553113553113553
+ },
+ "intermittent/channels/mean": {
+  "sad_week": 0.4981684981684982,
+  "control_week": 0.05311355311355312
+ },
+ "intermittent/channels/any": {
+  "sad_week": 0.7234432234432235,
+  "control_week": 0.16849816849816848
+ },
+ "intermittent/channels/voice": {
+  "sad_week": 0.695970695970696,
+  "control_week": 0.09157509157509158
+ },
+ "late/fused": {
+  "sad_week": 0.020146520146520148,
+  "control_week": 0.0018315018315018317
+ },
+ "late/channels/mean": {
+  "sad_week": 0.7124542124542125,
+  "control_week": 0.07509157509157509
+ },
+ "late/channels/any": {
+  "sad_week": 0.7124542124542125,
+  "control_week": 0.07509157509157509
+ },
+ "late/channels/voice": {
+  "sad_week": 0.7124542124542125,
+  "control_week": 0.07509157509157509
+ },
+ "settings_sweep": {
+  "k=1.5 calib=5": {
+   "sad_week": 0.8424908424908425,
+   "control_week": 0.15384615384615385
+  },
+  "k=1.5 calib=7": {
+   "sad_week": 0.8608058608058607,
+   "control_week": 0.1391941391941392
+  },
+  "k=2.0 calib=5": {
+   "sad_week": 0.7032967032967034,
+   "control_week": 0.10989010989010989
+  },
+  "k=2.0 calib=7": {
+   "sad_week": 0.717948717948718,
+   "control_week": 0.08424908424908424
+  }
+ }
+}

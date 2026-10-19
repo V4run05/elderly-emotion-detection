@@ -50,6 +50,30 @@ def load_waveform(audio_path: str) -> np.ndarray:
         os.remove(wav_path)
 
 
+def speech_span(waveform: np.ndarray, frame_s: float = 0.03) -> tuple[int, int] | None:
+    """(first, last) sample of speech: frames clearly above the background noise. None if silent."""
+    n = int(frame_s * SAMPLE_RATE)
+    if len(waveform) < n:
+        return None
+    frames = waveform[: len(waveform) // n * n].reshape(-1, n)
+    rms = np.sqrt(np.mean(frames ** 2, axis=1))
+    p95, floor = float(np.percentile(rms, 95)), float(np.percentile(rms, 10))
+    threshold = max(0.005, 0.08 * p95)
+    if floor < 0.5 * p95:            # there is a quieter background to compare against
+        threshold = max(threshold, 2.5 * floor)
+    loud = np.nonzero(rms > threshold)[0]
+    if len(loud) == 0:
+        return None
+    return int(loud[0] * n), int((loud[-1] + 1) * n)
+
+
+def speech_seconds(waveform: np.ndarray) -> float:
+    """Length of the spoken part, from the first to the last speech frame. Recordings end with ~1.8 s
+    of silence (end-of-answer detection), so the clip length is not the speech length."""
+    span = speech_span(waveform)
+    return (span[1] - span[0]) / SAMPLE_RATE if span else 0.0
+
+
 def voice_quality(waveform: np.ndarray) -> float:
     """0..1 proxy for "was there usable speech": loudness (RMS), zero if the clip is too short."""
     if len(waveform) < config.MIN_SPEECH_SECONDS * SAMPLE_RATE:

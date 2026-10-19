@@ -9,8 +9,10 @@ def test_reassurance_phrases_found():
 
 
 def test_says_fine_seems_low_is_masked():
+    # fixed line until the personal baseline is ready: -0.55 (config.LOW_NONVERBAL_THRESHOLD)
     assert masking.classify(0.7, -0.6, reassurance=True) == "masked"
-    assert masking.classify(0.4, -0.3, reassurance=False) == "masked"
+    assert masking.classify(0.4, -0.6, reassurance=False) == "masked"
+    assert masking.classify(0.6, -0.34, reassurance=True) == "ok"   # the voice model's usual neutral
 
 
 def test_reassurance_counts_as_saying_ok_even_with_neutral_words():
@@ -25,12 +27,12 @@ def test_openly_low_is_low_not_masked():
 
 def test_congruent_positive_is_ok():
     assert masking.classify(0.8, 0.4, reassurance=True) == "ok"
-    assert masking.classify(0.3, -0.1, reassurance=False) == "ok"  # not low enough
+    assert masking.classify(0.3, -0.4, reassurance=False) == "ok"  # not low enough
 
 
 def test_small_gap_is_not_masked():
-    # says mildly OK (0.15) and seems just below the low line (-0.25): gap 0.4 < 0.5
-    assert masking.classify(0.15, -0.25, reassurance=False) == "low"
+    # says mildly OK (0.15) and seems low on a personal scale (-0.2, line -0.15): gap 0.35 < 0.5
+    assert masking.classify(0.15, -0.2, reassurance=False, low_threshold=-0.15) == "low"
 
 
 def test_masking_score_range_and_gating():

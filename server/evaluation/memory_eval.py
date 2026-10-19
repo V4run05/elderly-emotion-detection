@@ -123,7 +123,8 @@ def run_case(case):
     lower = [t.lower() for t in texts]
     found = []
     for e in case["expect"]:
-        hit = next((m for m in stored if re.search(e["rx"], m["text"].lower())), None)
+        hits = [m for m in stored if re.search(e["rx"], m["text"].lower())]
+        hit = next((m for m in hits if m["event_date"]), hits[0] if hits else None)   # prefer the dated one
         found.append({"rx": e["rx"], "found": bool(hit), "date_ok": (hit or {}).get("event_date") == e["date"]
                       if hit and "date" in e else None})
     forbidden = [rx for rx in case["forbid"] if any(re.search(rx, t) for t in lower)]

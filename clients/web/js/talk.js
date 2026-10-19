@@ -144,7 +144,12 @@ function addAnalysis(data) {
     kv(seemed, 'Voice', channelText(a.nonverbal.channels.voice, 'voice'));
     kv(seemed, 'Face', channelText(a.nonverbal.channels.face, 'face'));
     kv(seemed, 'Seemed', a.nonverbal.available ? signed(a.nonverbal.valence) : 'n/a');
-    if (a.baseline) kv(seemed, 'Low line', `${signed(a.low_threshold)} ${a.baseline.ready ? '(personal)' : `(fixed, ${a.baseline.sessions}/${a.baseline.needed})`}`);
+    if (a.reading === false) kv(seemed, 'Reading', 'too short to count');
+    else if (a.vs_normal !== null && a.vs_normal !== undefined) {
+      kv(seemed, 'Vs. their normal', `${signed(a.vs_normal)} (low at ${signed(a.low_threshold)})`);
+    } else if (a.baseline) {
+      kv(seemed, 'Low line', `${signed(a.low_threshold)} ${a.baseline.ready ? '(personal)' : `(learning, ${a.baseline.sessions}/${a.baseline.needed})`}`);
+    }
   }
   card.append(seemed);
   if (data.input !== 'typed') card.append(scale(a.nonverbal.valence, '--series-seemed'));

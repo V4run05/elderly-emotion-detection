@@ -37,11 +37,11 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from app import config
-from app.analysis import masking, trends
+from app.analysis import baseline, masking, trends
 from app.companion import onboarding
 from app.companion import profile as profile_mod
 from app.companion import reminders as reminders_mod
-from app.dialogue import tts
+from app.dialogue import llm, tts
 from app.models import registry
 from app.services import conversation
 from app.storage import db
@@ -52,6 +52,7 @@ logger = logging.getLogger("uvicorn.error")
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db.init()
+    conversation.backfill_channels()   # per-channel values for sessions saved before they existed
     registry.preload_in_background()
     yield
 
@@ -71,7 +72,7 @@ def health():
     return {**registry.status(), "groq_key_set": bool(config.GROQ_API_KEY),
             "ffmpeg_found": shutil.which("ffmpeg") is not None,
             "configured": p["configured"], "elder_name": profile_mod.address_as(p),
-            "companion_name": profile_mod.companion_name(p)}
+            "companion_name": profile_mod.companion_name(p), "llm": llm.status()}
 
 
 # ---------------------------------------------------------------- check-in
@@ -175,14 +176,17 @@ def dashboard(days: int = Query(14, ge=1, le=90)):
     low = base["low_threshold"]
     since = (today - timedelta(days=days - 1)).isoformat()
     analysed = [s for s in all_sessions if s["status"] and s["started_at"][:10] >= since]
-    series = trends.daily_series(analysed, days, today, low)
+    series = trends.daily_series(analysed, days, today, base=base)
     last = max((trends.session_day(s) for s in analysed), default=None)
     recent = []
     for s in analysed[:10]:
         turns = db.get_turns(s["id"])
-        status = (masking.analyse(s["verbal_valence"], s["nonverbal_valence"],
-                                  ["x"] if s["reassurance"] else [], low)["status"]
-                  if s["nonverbal_valence"] is not None else s["status"])
+        if s["nonverbal_valence"] is not None:   # re-judged against today's baseline
+            j = baseline.judge(base, s["nonverbal_valence"], s.get("voice_valence"), s.get("face_valence"))
+            status = masking.analyse(s["verbal_valence"], j["value"], ["x"] if s["reassurance"] else [],
+                                     j["low_threshold"])["status"]
+        else:
+            status = s["status"]
         recent.append({**s, "status": status, "turns": [{
             "transcript": t["transcript"], "reply_text": t["reply_text"], "status": t["status"],
             "context": t["context"], "input": t["input"],
@@ -199,6 +203,7 @@ def dashboard(days: int = Query(14, ge=1, le=90)):
         "has_demo_data": any(s["is_demo"] for s in all_sessions),
         "baseline": base,
         "thresholds": {"low_nonverbal": low, "says_ok": config.SAYS_OK_THRESHOLD},
+        "llm": llm.status(),
         "reminders": reminders_mod.today(now),
         "memories": db.list_memories(limit=40),
         "wellbeing": _wellbeing(all_sessions, today),

@@ -3,7 +3,7 @@
 1. Accuracy of the voice model (4 classes) and how well it separates SAD from NEUTRAL (AUC).
 2. Age bias: does a neutral older voice read sadder? (per-actor means, actor-level bootstrap)
 3. The masking check on real readings: every clip paired with "I'm fine" words. Per message,
-   fixed low line vs personal baseline (calibrated on 5 of the actor's own neutral clips).
+   fixed low line vs personal baseline (calibrated on BASELINE_SESSIONS of the actor's own neutral clips).
 4. 14-day family-alert simulation per actor with real readings: a well week, then either a
    "sad week" (SAD clips, still saying fine) or a control week (more neutral/happy clips).
 
@@ -152,11 +152,12 @@ def main() -> None:
     per_group = {m: {g: {"tp": [0, 0], "fp": [0, 0]} for _, _, g in AGE_GROUPS} for m in ("fixed", "baseline")}
     for actor, rs in by_actor.items():
         neu_a = [r for r in rs if r["emotion"] == "Neutral"]
-        if len(neu_a) < 7:
+        n_cal = config.BASELINE_SESSIONS
+        if len(neu_a) < n_cal + 2:
             continue
-        calib = rng.sample(neu_a, 5)
+        calib = rng.sample(neu_a, n_cal)
         calib_ids = {r["file"] for r in calib}
-        sess = [{"started_at": f"2026-01-0{i + 1}T09:00:00+05:30", "nonverbal_valence": r["valence"]} for i, r in enumerate(calib)]
+        sess = [{"started_at": f"2026-01-{i + 1:02d}T09:00:00+05:30", "nonverbal_valence": r["valence"]} for i, r in enumerate(calib)]
         low_b = baseline.compute(sess)["low_threshold"]
         g = rs[0]["group"]
         for r in rs:

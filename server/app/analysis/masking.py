@@ -31,8 +31,29 @@ REASSURANCE_PATTERNS = [
     r"\bno complaints\b",
     r"\b(it'?s|that'?s) nothing\b",
     r"\bjust (a bit |a little )?tired\b",
+    # Indian English (missed in evaluation: "Okay only, what to say.")
+    r"\b(okay|ok|fine|good|alright) only\b",
+    r"\bwhat (to|can i|is there to) say\b",
+    r"\b(i'?m|i am|just|somehow) (adjusting|managing|surviving|pulling along)( somehow| okay| fine| alright)?\s*([,.!?]|$)",
+    r"\b(it'?s|all|everything is|everything'?s) (alright|all right|okay|ok|fine|normal)\b",
+    r"\ball good\b",
 ]
 _COMPILED = [re.compile(p, re.IGNORECASE) for p in REASSURANCE_PATTERNS]
+
+# "I'm fine, but I miss him": the part after the "but" is what they are really saying (they are
+# opening up, not masking). EVALUATION.md §5: all 5 such sentences counted as "says OK" before.
+_CONTRAST = re.compile(r"[,.;]?\s*\b(but|though|although|except|only thing is|just)\b\s+", re.IGNORECASE)
+
+
+def after_contrast(text: str) -> str | None:
+    """The clause after a "but" that follows a reassurance ("I'm okay, but the nights are hard"),
+    or None if there is none."""
+    text = text.replace("’", "'")
+    m = _CONTRAST.search(text)
+    if not m or not any(rx.search(text[:m.start()]) for rx in _COMPILED):
+        return None
+    tail = text[m.end():].strip()
+    return tail if len(tail.split()) >= 2 else None
 
 
 def find_reassurance(text: str) -> list:

@@ -120,6 +120,11 @@ node ..\clients\web\js\vad.test.mjs                       # end-of-answer detect
 
 Evaluation on real data (datasets download, ~1 h total) is in [EVALUATION.md](EVALUATION.md) §10.
 
+New settings since the evaluation (all optional, defaults in `server/.env.example`): `LLM_BACKUP_MODELS`,
+`LLM_HEDGE_DELAY_S`, `SAFETY_SCREEN_MODEL`, `SAFETY_SCREEN_FALLBACKS`, `HELPLINE_NAME`, `HELPLINE_NUMBER`,
+`BASELINE_COMBINE`, `MIN_READING_SECONDS`. The self-harm screen uses Groq's `openai/gpt-oss-safeguard-20b`
+(same key; no extra setup).
+
 The smoke test stores a real conversation; remove it with `seed_demo.py --clear-all` if needed.
 The bundled `test_clip` is a synthetic tone, not speech (the server will say it heard nothing).
 Record your own answer for a meaningful run.

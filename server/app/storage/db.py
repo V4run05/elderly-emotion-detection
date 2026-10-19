@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     safety_flag INTEGER NOT NULL DEFAULT 0,
     summary TEXT,                       -- one line, written by the memory step after the session
     signals_json TEXT,                  -- wellbeing signals (sleep, appetite, pain, ...) from it
-    checkin INTEGER NOT NULL DEFAULT 0  -- 1 = greeting asked the daily "how are you feeling?"
+    checkin INTEGER NOT NULL DEFAULT 0, -- 1 = greeting asked the daily "how are you feeling?"
+    voice_valence REAL,                 -- mean per channel over the spoken readings (personal baseline)
+    face_valence REAL,
+    readings INTEGER NOT NULL DEFAULT 0 -- spoken messages that gave a voice/face reading
 );
 CREATE TABLE IF NOT EXISTS turns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,7 +105,8 @@ CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at);
 
 # Columns added after the first release; init() adds them to older databases.
 MIGRATIONS = {
-    "sessions": [("summary", "TEXT"), ("signals_json", "TEXT"), ("checkin", "INTEGER NOT NULL DEFAULT 0")],
+    "sessions": [("summary", "TEXT"), ("signals_json", "TEXT"), ("checkin", "INTEGER NOT NULL DEFAULT 0"),
+                 ("voice_valence", "REAL"), ("face_valence", "REAL"), ("readings", "INTEGER NOT NULL DEFAULT 0")],
     "turns": [("context", "TEXT NOT NULL DEFAULT 'chat'"), ("input", "TEXT NOT NULL DEFAULT 'voice'")],
 }
 
@@ -164,6 +168,13 @@ def add_turn(session_id: str, turn_index: int, created_at: str, transcript: str,
         )
 
 
+def flag_turn_safety(session_id: str, turn_index: int) -> None:
+    """A late result from the self-harm screen: mark the message and its conversation."""
+    with _conn() as c:
+        c.execute("UPDATE turns SET safety_flag = 1 WHERE session_id = ? AND turn_index = ?", (session_id, turn_index))
+        c.execute("UPDATE sessions SET safety_flag = 1 WHERE id = ?", (session_id,))
+
+
 def wellbeing_answered_on(day: str) -> bool:
     """True if the daily "how are you feeling?" was answered on `day` (YYYY-MM-DD)."""
     with _conn() as c:
@@ -203,7 +214,8 @@ def get_turns(session_id: str) -> list:
 
 def update_session(session_id: str, **fields) -> None:
     allowed = {"ended_at", "turn_count", "verbal_valence", "nonverbal_valence", "masking_score",
-               "status", "reassurance", "safety_flag", "summary", "signals"}
+               "status", "reassurance", "safety_flag", "summary", "signals", "voice_valence",
+               "face_valence", "readings"}
     bad = set(fields) - allowed
     if bad:
         raise ValueError(f"unknown session fields: {bad}")

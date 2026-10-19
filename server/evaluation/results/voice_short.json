@@ -1,0 +1,27 @@
+{
+ "0.4s speech": {
+  "auc_sad_vs_neutral": 0.552368,
+  "mean_sad": 0.1572643941841088,
+  "mean_neutral": 0.19852208442473784
+ },
+ "0.6s speech": {
+  "auc_sad_vs_neutral": 0.581872,
+  "mean_sad": 0.10128560874890537,
+  "mean_neutral": 0.17243658000696452
+ },
+ "0.8s speech": {
+  "auc_sad_vs_neutral": 0.613408,
+  "mean_sad": 0.032531025764765215,
+  "mean_neutral": 0.14176314972736873
+ },
+ "1.0s speech": {
+  "auc_sad_vs_neutral": 0.599744,
+  "mean_sad": -0.020527731908950953,
+  "mean_neutral": 0.07412847743928433
+ },
+ "full": {
+  "auc_sad_vs_neutral": 0.758432,
+  "mean_sad": -0.555587049719441,
+  "mean_neutral": -0.3395247874048073
+ }
+}

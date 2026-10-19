@@ -83,7 +83,9 @@ Rules:
 - 0-5 items.
 reminders_done: ids of today's reminders {name} clearly said were done. Today's reminders: {rem}
 signals: sleep/appetite = good|poor|unknown; pain, loneliness = yes|no|unknown;
-social_contact = yes if {name} talked to or met anyone (calls count) since yesterday, no if they said they haven't, else unknown.
+appetite = poor if they skip meals, eat very little, or don't feel like cooking or eating;
+social_contact = yes if {name} talked to or met anyone since yesterday (calls, visitors and neighbours who
+came by all count), no if they said they haven't, else unknown.
 summary: one sentence the companion can recall next time.
 Profile (already known):
 {profile_mod.describe(p)}

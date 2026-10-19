@@ -63,8 +63,8 @@ server/
       fusion.py            voice+face → one distribution + non-verbal valence
       masking.py           reassurance phrases + the masked/low/ok rule
       trends.py            daily series + family alert level
-      baseline.py          personal baseline: the person's normal + personal low line
-      safety.py            self-harm keyword screen
+      baseline.py          personal baseline per channel (voice, face); judge() = reading vs their normal
+      safety.py            self-harm screen: keywords + LLM screen (gpt-oss-safeguard-20b) with context
     dialogue/
       stt.py               Groq whisper-large-v3 (+ filter for silence hallucinations on quiet clips)
       llm.py               Groq LLM: personalised system prompt, greeting, replies, strict-JSON helper
@@ -80,6 +80,8 @@ server/
     face_utk.py            face model age bias on UTKFace
     verbal_safety.py       words side + keyword vs LLM self-harm screen
     conversation_sim.py    LLM-played user vs the real companion code, auto metrics + LLM judge
+    voice_short.py         are short answers reliable voice readings? (no: chance below 1 s)
+    channel_sim.py         per-channel vs fused baseline with the camera on/off (real voices + older faces)
     memory_eval.py, latency_bench.py
     datasets/              (gitignored) CREMA-D, UTKFace
     results/               summary JSON (committed); raw/ per-item outputs (gitignored)
@@ -160,7 +162,7 @@ All JSON. Errors that the user should see come back as `400 {"error": "..."}`.
 
 | Method & path | Body | Returns |
 |---|---|---|
-| `GET /api/health` | – | `{models: {voice, face, text: not_loaded\|loading\|ready\|error}, errors, ready, groq_key_set, ffmpeg_found, configured, elder_name, companion_name}` |
+| `GET /api/health` | – | `{models: {voice, face, text: not_loaded\|loading\|ready\|error}, errors, ready, groq_key_set, ffmpeg_found, configured, elder_name, companion_name, llm: {degraded, unavailable, using, cooling_s, last_problem}}` |
 | `POST /api/sessions` | – | `{session_id, greeting_text, greeting_audio_url, daily_question, max_turns (0 = open), companion_name}`; closes any stale open conversation |
 | `POST /api/sessions/{id}/turns` | multipart: `audio` (required, any ffmpeg-readable format), `images` (0..n JPEG/PNG) | see below |
 | `POST /api/sessions/{id}/messages` | JSON `{text}` | same shape as a turn, `input: "typed"`, no voice/face reading |
@@ -216,7 +218,9 @@ When nothing intelligible was said: `{"heard": false, "reply_text": "...", "repl
 **sessions** (one conversation): `id` (hex uuid), `started_at` (ISO, local offset), `ended_at`, `greeting`,
 `is_demo` (1 = seeded), `turn_count`, `verbal_valence`, `nonverbal_valence`, `masking_score`,
 `status`, `reassurance`, `safety_flag`, `summary`, `signals_json`, `checkin` (greeting asked the daily
-question). Scores: "said" = the daily answer if present else all messages; "seemed" = spoken messages
+question), `voice_valence`, `face_valence` (per channel, for the personal baseline), `readings` (spoken
+messages with ≥ 0.4 s of speech; days are weighted by it). Older sessions get the per-channel values
+filled in at startup (`conversation.backfill_channels`). Scores: "said" = the daily answer if present else all messages; "seemed" = spoken messages
 only (`nonverbal_valence` is NULL for a typed-only conversation). The score columns are recomputed
 after every turn; `summary` and `signals_json` are written by the memory step after the session.
 
@@ -315,8 +319,8 @@ device-specific code lives only under `clients/<device>/`.
    `prompt`**: a context prompt made Whisper invent text ("Lakshmi replied, …").
 4. **gpt-oss on Groq:** hidden reasoning tokens count against `max_tokens`, so keep 400 (~150
    truncates replies); `reasoning_effort="low"`. Groq intermittently returns
-   `tool_use_failed` even though no tools are passed (known Groq bug), so retry up to 3 times,
-   then fall back to a generic line. Empty completions are retried too.
+   `tool_use_failed` even though no tools are passed (known Groq bug), so retry up to 3 times.
+   Empty completions are retried too.
 5. **Text model choice:** a 7-class text-emotion model read "I'm fine, nothing to worry about" as
    67% *fear*. The sentiment model reads it 74% positive. Keep a sentiment model for "what they claim".
 6. **Face detection = YuNet.** MediaPipe 1.x removed `mediapipe.python.solutions`; OpenCV 5
@@ -348,8 +352,9 @@ device-specific code lives only under `clients/<device>/`.
     playback starts in ~0.5 s. Keep replies short anyway.
 17. **Dual-stack socket** (`run_server.py`): Windows resolves `localhost` to ::1 first; an IPv4-only
     server costs ~2 s per new connection. `--reload` mode still binds 0.0.0.0 only.
-18. **Hedged replies:** 120b is better but has 7–10 s spikes on Groq; asking 20b in parallel caps the
-    wait at ~3 s (`llm.hedged`). Greetings use the same.
+18. **Hedged replies:** 120b is better but has 7–10 s spikes on Groq. 20b is asked only if 120b hasn't
+    answered after `LLM_HEDGE_DELAY_S` (1.5 s); 120b is still preferred up to 3 s. Asking both at once
+    doubled token use and emptied the free daily budget after ~80 replies (EVALUATION.md §7).
 19. **Open conversation, analysed per message:** the masking rule applies to every spoken message, but
     a conversation's "said" uses the daily-question answer when there is one, because chit-chat
     sentiment ("the film was sad") isn't a self-report.
@@ -365,6 +370,26 @@ device-specific code lives only under `clients/<device>/`.
     (overflow above becomes unreachable); use `margin-top: auto` on the first child. After a reply,
     scroll so the person's own last message stays visible.
 24. **Bind 0.0.0.0 / ::** so phones and the Pi on the same network can reach the server.
+25. **Groq free-tier limits are per model per day** (200k tokens; safeguard-20b also 2k tokens/minute).
+    A long rate limit puts that model on cooldown (`llm._cooldown`) and replies move down the chain
+    120b → 20b → `LLM_BACKUP_MODELS` (qwen3.8-27b). If nothing answers the companion says
+    `UNAVAILABLE_REPLY` ("having trouble thinking right now"), never "I didn't catch that": that message
+    was what users heard for every reply once the budget ran out. The dashboard shows a note when degraded.
+26. **Self-harm screen:** keyword regex first (instant); otherwise the LLM screen runs in parallel with the
+    reply, with the last 3 user messages and the profile's losses as context ("joining him" after talking
+    about a late husband). If it flags, the LLM's reply is replaced by the fixed `llm.safety_reply()`
+    (helpline from config). In testing the LLM answered "I keep thinking about joining him" with "Priya's
+    results are on Thursday". A result that arrives after `SAFETY_SCREEN_WAIT_S` still flags the message
+    later (`_late_safety`), so the family alert is raised and the next reply follows `SAFETY_FOLLOWUP`.
+27. **Sensitive topics are enforced in code:** names in the profile's sensitive topics (e.g. "Raman") are
+    removed from the profile text, memories and greeting hook until the person says one of them (or the
+    relation word, "husband") in this conversation (`profile.sensitive_opened`). The prompt rule alone
+    wasn't enough: the LLM brought him up unprompted.
+28. **The "seems low" decision uses the voice against its own normal** (`BASELINE_COMBINE=voice`). Averaging
+    voice and face diluted the voice drop when the face stayed normal (masking) to 16–27% of low weeks
+    caught; one fused baseline gave 36% false alerts when the camera was only on some days.
+29. **Typed-only days still carry the safety flag** in `trends.daily_series` (they used to be skipped
+    entirely, so a typed disclosure never raised the urgent alert).
 
 ## 11. Testing
 
@@ -373,7 +398,8 @@ device-specific code lives only under `clients/<device>/`.
 - `python scripts/smoke_test.py [--audio file] [--image file]` against a running server: real
   models, real Groq. Note: it records a real conversation (clear with `seed_demo.py --clear-all`).
 - `node clients/web/js/vad.test.mjs`: simulated loudness patterns for end-of-answer detection.
-- `python scripts/evaluate_baseline.py [--drop 0.25]`: fixed vs personal low line on synthetic people.
+- `python scripts/evaluate_baseline.py [--drop 0.25]`: fixed vs personal low line on synthetic people
+  (decision logic only; superseded by the real-data evaluation in `server/evaluation/`).
 - `server/evaluation/`: evaluation on real data and simulated conversations; results and how to re-run in
   [EVALUATION.md](EVALUATION.md). The Groq-based scripts use up the free daily budget.
 - Manual: open the talk page and have a real conversation. The "Show analysis" panel shows every score.
