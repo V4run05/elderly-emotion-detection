@@ -1,60 +1,40 @@
 import pytest
-from app.fusion.fuse import fuse_emotions
 
-def test_fuse_emotions_single_modality():
-    voice_res = {
-        "label": "Happiness",
-        "confidence": 0.9,
-        "probs": {"Anger": 0.05, "Happiness": 0.9, "Neutral": 0.05, "Sadness": 0.0},
-        "quality_score": 0.8
-    }
-    result = fuse_emotions({"voice": voice_res})
-    
-    assert result["label"] == "Happiness"
-    assert result["confidence"] == 0.9
-    assert result["weights"]["voice"] == 1.0
+from app.analysis import fusion
 
-def test_fuse_emotions_multiple_modalities():
-    voice_res = {
-        "label": "Happiness",
-        "confidence": 0.6,
-        "probs": {"Anger": 0.1, "Happiness": 0.6, "Neutral": 0.2, "Sadness": 0.1},
-        "quality_score": 0.2 # low quality
-    }
-    face_res = {
-        "label": "Sadness",
-        "confidence": 0.8,
-        "probs": {"Anger": 0.1, "Happiness": 0.1, "Neutral": 0.0, "Sadness": 0.8},
-        "quality_score": 0.8 # high quality
-    }
-    
-    result = fuse_emotions({"voice": voice_res, "face": face_res})
-    
-    assert result["weights"]["voice"] == 0.2
-    assert result["weights"]["face"] == 0.8
-    assert result["label"] == "Sadness"
-    assert result["probs"]["Sadness"] == (0.1 * 0.2) + (0.8 * 0.8) # 0.02 + 0.64 = 0.66
 
-def test_fuse_emotions_zero_quality():
-    voice_res = {
-        "label": "Happiness",
-        "confidence": 0.6,
-        "probs": {"Anger": 0.1, "Happiness": 0.6, "Neutral": 0.2, "Sadness": 0.1},
-        "quality_score": 0.0
-    }
-    face_res = {
-        "label": "Sadness",
-        "confidence": 0.8,
-        "probs": {"Anger": 0.1, "Happiness": 0.1, "Neutral": 0.0, "Sadness": 0.8},
-        "quality_score": 0.0
-    }
-    
-    result = fuse_emotions({"voice": voice_res, "face": face_res})
-    assert result["weights"]["voice"] == 0.5
-    assert result["weights"]["face"] == 0.5
+def ch(label_probs: dict, quality: float) -> dict:
+    label = max(label_probs, key=label_probs.get)
+    probs = {"Anger": 0.0, "Happiness": 0.0, "Neutral": 0.0, "Sadness": 0.0, **label_probs}
+    return {"label": label, "confidence": probs[label], "probs": probs, "quality": quality}
 
-def test_fuse_emotions_empty():
-    result = fuse_emotions({})
-    assert result["label"] == "Neutral"
-    assert result["confidence"] == 0.0
-    assert result["probs"]["Neutral"] == 1.0
+
+def test_valence_mapping():
+    assert fusion.valence({"Happiness": 1.0}) == 1.0
+    assert fusion.valence({"Sadness": 1.0}) == -1.0
+    assert fusion.valence({"Neutral": 1.0}) == 0.0
+    assert fusion.valence({"Anger": 1.0}) == -0.5
+
+
+def test_weights_follow_quality_times_confidence():
+    voice = ch({"Sadness": 0.8, "Neutral": 0.2}, quality=1.0)   # 0.8
+    face = ch({"Neutral": 0.6, "Happiness": 0.4}, quality=0.5)  # 0.3
+    out = fusion.fuse({"voice": voice, "face": face})
+    assert out["weights"]["voice"] == pytest.approx(0.8 / 1.1)
+    assert out["weights"]["face"] == pytest.approx(0.3 / 1.1)
+    assert out["probs"]["Sadness"] == pytest.approx(0.8 / 1.1 * 0.8)
+    assert out["label"] == "Sadness"
+    assert sum(out["probs"].values()) == pytest.approx(1.0)
+
+
+def test_missing_channel_drops_out():
+    voice = ch({"Happiness": 0.9, "Neutral": 0.1}, quality=0.9)
+    out = fusion.fuse({"voice": voice, "face": None})
+    assert out["weights"] == {"voice": 1.0}
+    assert out["available"]
+
+
+def test_nothing_usable_returns_neutral():
+    out = fusion.fuse({"voice": None, "face": ch({"Sadness": 1.0}, quality=0.0)})
+    assert not out["available"]
+    assert out["valence"] == 0.0

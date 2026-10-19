@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Talk · I'm Fine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a class="wordmark" href="index.html">I'm Fine</a>
+    <nav class="nav">
+      <a href="index.html" aria-current="page">Talk</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="setup.html">Setup</a>
+      <button class="link-button" id="toggle-camera" type="button" aria-pressed="false">Show camera</button>
+      <button class="link-button" id="toggle-analysis" type="button" aria-pressed="true">Hide analysis</button>
+    </nav>
+  </header>
+
+  <main class="checkin" id="layout">
+    <section class="stage">
+      <div class="stage-top">
+        <div class="label" id="eyebrow">Talking with your companion</div>
+        <!-- "Hide camera" (the default) only hides the picture: the camera keeps working for the
+             face reading, so a "Camera on" indicator stays visible instead. -->
+        <div class="camera hidden" id="camera">
+          <video id="preview" autoplay muted playsinline></video>
+          <div class="label"><span class="rec"></span>Camera on</div>
+        </div>
+        <span class="cam-indicator hidden" id="cam-indicator"><span class="rec"></span>Camera on</span>
+      </div>
+
+      <div class="transcript" id="transcript" aria-live="polite">
+        <div id="empty">
+          <p class="empty-hint" id="hint">Getting ready…</p>
+          <p id="hint-sub">This takes a few seconds.</p>
+          <div class="hint-actions hidden" id="setup-hint">
+            <button class="button button-primary" id="know-button" type="button" style="height: 56px; font-size: 19px; padding: 0 26px">Get to know each other</button>
+            <a class="link-button" href="setup.html">or fill in the form instead</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="big-action" id="main-button" disabled>Please wait</button>
+        <div class="state">
+          <div class="bars hidden" id="bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          <span id="status"></span>
+        </div>
+        <button class="link-button end-link hidden" id="end-button" type="button">End conversation</button>
+      </div>
+      <form class="type-form" id="type-form" autocomplete="off">
+        <label class="sr-only" for="type-input">Type a message</label>
+        <input id="type-input" class="input" placeholder="Or type a message…" maxlength="2000">
+        <button class="button" type="submit">Send</button>
+      </form>
+      <div class="error hidden" id="error" role="alert"></div>
+    </section>
+
+    <aside class="analysis" id="analysis">
+      <h2 id="analysis-title">Analysis</h2>
+      <p id="analysis-sub">What was said compared with how they seemed. Shown for demos and evaluation only.</p>
+      <div class="progress hidden" id="progress"><span id="progress-bar"></span></div>
+      <div id="answers"><p class="muted" style="font-size: 13px">Scores for each answer appear here during a check-in.</p></div>
+    </aside>
+  </main>
+
+  <script type="module" src="js/talk.js"></script>
+</body>
+</html>

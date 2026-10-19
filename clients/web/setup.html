@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setup · I'm Fine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a class="wordmark" href="index.html">I'm Fine</a>
+    <nav class="nav">
+      <a href="index.html">Talk</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="setup.html" aria-current="page">Setup</a>
+    </nav>
+  </header>
+
+  <main class="setup">
+    <nav class="setup-nav" aria-label="Sections">
+      <span class="label">Profile</span>
+      <a href="#about">About them</a>
+      <a href="#companion">Their companion</a>
+      <a href="#people">People in their life</a>
+      <a href="#daily">Daily life</a>
+      <a href="#health">Health and reminders</a>
+    </nav>
+
+    <form id="form" autocomplete="off">
+      <div class="setup-intro">
+        <h1 id="title">Set up the companion</h1>
+        <p>Fill this in together with the person it's for. The more the companion knows, the more personal
+          the daily chats become: it can ask about the people they love, remind them of their routine, and
+          suggest things they enjoy. It keeps learning in every conversation, and everything here can be changed later.</p>
+        <div class="talk-option">
+          <p><b>Prefer to talk?</b> The companion can ask the questions out loud and fill this in from the answers (about five minutes).</p>
+          <a class="button" href="index.html?mode=get-to-know">Set up by talking</a>
+        </div>
+      </div>
+
+      <section class="form-section" id="about">
+        <h2>About them</h2>
+        <div class="grid-3">
+          <label class="field"><span>What should we call them?</span><input name="elder.preferred_name" required placeholder="Lakshmi"></label>
+          <label class="field"><span>Full name</span><input name="elder.full_name" placeholder="Lakshmi Iyer"></label>
+          <label class="field"><span>Pronouns</span>
+            <select name="elder.pronouns"><option value="she">she / her</option><option value="he">he / him</option><option value="they">they / them</option></select></label>
+        </div>
+        <div class="grid-3">
+          <label class="field"><span>Age</span><input name="elder.age" inputmode="numeric" placeholder="78"></label>
+          <label class="field"><span>City or town</span><input name="elder.city" placeholder="Chennai"></label>
+          <label class="field"><span>Languages they speak</span><input name="elder.languages" placeholder="Tamil, English"></label>
+        </div>
+        <label class="field"><span>Their story</span><textarea name="elder.background" placeholder="Retired school teacher (taught maths for 35 years). Grew up in Madurai. Loves telling stories about her students."></textarea></label>
+        <label class="field"><span>Living situation</span><textarea name="elder.living" placeholder="Lives alone since her husband passed in 2023. Son lives in Pune. A helper comes in the mornings."></textarea></label>
+      </section>
+
+      <section class="form-section" id="companion">
+        <h2>Their companion</h2>
+        <p>Give the companion a name they'll enjoy saying, and choose how it sounds.</p>
+        <div class="grid-2">
+          <label class="field"><span>Companion's name</span><input name="companion.name" placeholder="Asha"><small>Used in conversation and on every page.</small></label>
+          <label class="field"><span>How the companion addresses them</span><input name="companion.address_as" placeholder="Lakshmi Amma"></label>
+        </div>
+        <div class="field"><span>Voice</span>
+          <div class="inline">
+            <select name="companion.voice" id="voice" class="input" style="max-width: 360px"></select>
+            <button class="button" type="button" id="preview">Play sample</button>
+          </div>
+        </div>
+        <div class="field"><span>Personality</span>
+          <div class="choices" id="styles"></div>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Family contact for alerts</span><input name="family_contact.name" placeholder="Arjun"></label>
+          <label class="field"><span>Their relation</span><input name="family_contact.relation" placeholder="son"></label>
+        </div>
+      </section>
+
+      <section class="form-section" id="people">
+        <h2>People in their life</h2>
+        <p>Family, friends, neighbours, helpers. The companion will ask about them by name.</p>
+        <div class="rows" id="people-rows"></div>
+        <div><button class="button" type="button" id="add-person">Add a person</button></div>
+      </section>
+
+      <section class="form-section" id="daily">
+        <h2>Daily life</h2>
+        <div class="grid-2">
+          <label class="field"><span>Usually wakes up</span><input type="time" name="routine.wake_time"></label>
+          <label class="field"><span>Usually goes to bed</span><input type="time" name="routine.sleep_time"></label>
+        </div>
+        <label class="field"><span>A typical day</span><textarea name="routine.daily" placeholder="Morning walk in the park, temple on Tuesdays, watches her serial at 8 pm, calls her sister on Sundays."></textarea></label>
+        <label class="field"><span>Interests and things they enjoy</span><textarea name="interests" placeholder="Gardening (roses), old Tamil film songs, cooking, crosswords, cricket."></textarea></label>
+        <label class="field"><span>What usually cheers them up</span><textarea name="cheer_up" placeholder="Talking about her grandchildren, her garden, singing M.S. Subbulakshmi songs."></textarea></label>
+        <label class="field"><span>Activities the companion can suggest</span><textarea name="activities" placeholder="A short walk, watering the plants, calling a friend, listening to bhajans, a crossword."></textarea></label>
+      </section>
+
+      <section class="form-section" id="health">
+        <h2>Health and reminders</h2>
+        <label class="field"><span>Health notes</span><textarea name="health_notes" placeholder="Knee pain when it's cold. Diabetic: try not to suggest sweets."></textarea>
+          <small>Used so the companion is considerate. It never gives medical advice.</small></label>
+        <label class="field"><span>Topics to handle gently</span><textarea name="sensitive_topics" placeholder="Her late husband Raman: let her bring him up."></textarea>
+          <small>The companion won't raise these itself, but will listen kindly if they come up.</small></label>
+        <div class="field"><span>Daily reminders</span><small>Medicines, routines and appointments. The companion brings these up naturally and notes when they're done.</small></div>
+        <div class="rows" id="reminder-rows"></div>
+        <div><button class="button" type="button" id="add-reminder">Add a reminder</button></div>
+      </section>
+
+    </form>
+  </main>
+
+  <div class="savebar">
+    <span class="muted" id="save-status"></span>
+    <a class="button hidden" id="go-checkin" href="index.html">Go to check-in</a>
+    <button class="button button-primary" id="save" type="submit" form="form">Save profile</button>
+  </div>
+
+  <script type="module" src="js/setup.js"></script>
+</body>
+</html>

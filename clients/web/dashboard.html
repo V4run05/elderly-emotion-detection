@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · I'm Fine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a class="wordmark" href="index.html">I'm Fine</a>
+    <nav class="nav">
+      <a href="index.html">Talk</a>
+      <a href="dashboard.html" aria-current="page">Dashboard</a>
+      <a href="setup.html">Setup</a>
+    </nav>
+  </header>
+
+  <main class="dash" id="dash">
+    <div class="dash-main">
+      <section class="section summary" aria-live="polite">
+        <div class="summary-top">
+          <span id="level"></span>
+          <span class="label" id="meta">Last 7 days</span>
+        </div>
+        <h1 id="message">Loading…</h1>
+        <div class="stats" id="stats">
+          <div class="stat"><div class="label">Days talked</div><div class="value" id="s-days">–</div></div>
+          <div class="stat"><div class="label">Seemed low</div><div class="value" id="s-low">–</div></div>
+          <div class="stat"><div class="label">Said fine, seemed low</div><div class="value" id="s-masked">–</div></div>
+          <div class="stat"><div class="label">Last talked</div><div class="value" id="s-last">–</div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Said vs. seemed</h2>
+            <p>Daily average over 14 days, from −1 (negative) to +1 (positive).</p>
+          </div>
+          <div class="legend">
+            <span><svg width="18" height="8" aria-hidden="true"><line x1="1" y1="4" x2="17" y2="4" stroke="var(--series-said)" stroke-width="2" stroke-linecap="round"/></svg>What they said</span>
+            <span><svg width="18" height="8" aria-hidden="true"><line x1="1" y1="4" x2="17" y2="4" stroke="var(--series-seemed)" stroke-width="2" stroke-linecap="round"/></svg>How they seemed</span>
+            <span><svg width="13" height="13" aria-hidden="true"><rect width="13" height="13" fill="var(--band)"/></svg>Said fine, seemed low</span>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chart-wrap">
+          <svg id="chart" role="img" aria-label="Daily chart of what they said and how they seemed"></svg>
+          <div class="tooltip hidden" id="tooltip"></div>
+        </div>
+        <div class="chart-foot">
+          <div class="legend" id="dot-legend"></div>
+          <button class="link-button" id="table-toggle" type="button">Show as table</button>
+        </div>
+        <p class="note" id="baseline-note"></p>
+        <div id="table-view" class="hidden" style="margin-top: 20px"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Conversations</h2>
+            <p>Select a row to read the conversation.</p>
+          </div>
+        </div>
+        <div id="sessions"></div>
+      </section>
+    </div>
+
+    <aside class="dash-side">
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Today’s reminders</h2>
+            <p>Confirmed in conversation, or tick them off here.</p>
+          </div>
+        </div>
+        <ul class="list-plain" id="reminders"></ul>
+        <form class="inline" id="add-reminder" style="margin-top: 18px">
+          <label class="field" style="flex: 1 1 100%"><span>New reminder</span><input name="title" required maxlength="120" placeholder="Call Priya"></label>
+          <label class="field" style="flex: 1"><span>Time</span><input name="time" type="time"></label>
+          <label class="field" style="flex: 1.3"><span>Days</span>
+            <select name="days"><option value="daily">Every day</option><option value="once">Today only</option><option value="mon,tue,wed,thu,fri">Weekdays</option><option value="sat,sun">Weekends</option></select></label>
+          <button class="button" type="submit">Add</button>
+        </form>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Mentioned in conversation</h2>
+            <p id="wellbeing-sub">Last 7 days.</p>
+          </div>
+        </div>
+        <dl class="kv-list" id="wellbeing"></dl>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2 id="learned-title">What the companion has learned</h2>
+            <p>From conversations; used to make chats personal. Remove anything that’s wrong or private.</p>
+          </div>
+        </div>
+        <ul class="list-plain" id="memories"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

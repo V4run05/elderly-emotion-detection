@@ -1,28 +1,29 @@
-# NOTE: ffmpeg must also be installed as a SYSTEM dependency (not pip-installable) and on
-# PATH -- required to decode uploaded AAC/M4A audio (see app/voice_emotion/preprocess.py).
-# Windows: winget install --id Gyan.FFmpeg -e
-# macOS:   brew install ffmpeg
-# Linux:   apt install ffmpeg (or your distro's equivalent)
+# Python 3.12 (standard Windows/Linux/macOS build -- NOT MSYS2's python on Windows).
+# ffmpeg must ALSO be installed as a system program and be on PATH (see docs/SETUP.md).
+
+# Web server
 fastapi
 uvicorn[standard]
 python-multipart
-librosa
-soundfile
-autrainer
-groq
 python-dotenv
-gTTS
+cryptography          # self-signed HTTPS cert for phone access (run_server.py --https)
+
+# Audio / images
 numpy
-scipy
-# Face emotion model (trpakov/vit-face-expression) -- a standard transformers checkpoint,
-# pulled in separately from autrainer's own torch dependency since the face model needs the
-# plain transformers image-classification path, not autrainer's CLI.
+soundfile
+pillow
+opencv-python-headless  # face detection (YuNet). Install ONLY this OpenCV package
+
+# Models
 torch
 transformers
-pillow
+autrainer             # voice emotion model is in autrainer's own checkpoint format
 
+# Cloud services (Groq: speech-to-text + LLM [+ optional Orpheus TTS]; edge-tts / gTTS: text-to-speech)
+groq
+gTTS                  # last-resort TTS fallback
+edge-tts              # default TTS: Microsoft neural voices (free, no key)
+
+# Tests
 pytest
-pytest-asyncio
-mediapipe
-scikit-learn
-pandas
+httpx
