@@ -10,6 +10,20 @@
 
 ---
 
+## 2026-10-21: README with install and run steps, submission documents
+
+**Changed**
+- `README.md`: now says what to install, how to install (Windows and macOS/Linux), how to run, first use,
+  demo data, phone use and tests, then links to the docs. SETUP.md stays the full guide.
+
+**Added**
+- `docs/Asha_Source_Code_and_Install.docx`: GitHub link plus install and run instructions (2 pages).
+- `docs/Asha_Flowcharts_Screenshots_Results.docx`: system and message flowcharts, the family alert logic,
+  screenshots of the talk page and dashboard, and the final evaluation results (9 pages).
+- `.gitignore`: `~$*` (Word lock files).
+
+---
+
 ## 2026-10-20: Results document
 
 **Added**
