@@ -162,9 +162,9 @@ def test_unknown_session_is_400(client):
 
 def test_health_and_static_pages(client):
     assert "models" in client.get("/api/health").json()
-    assert "Talk · I'm Fine" in client.get("/").text
-    assert "Dashboard · I'm Fine" in client.get("/dashboard.html").text
-    assert "Setup · I'm Fine" in client.get("/setup.html").text
+    assert "Talk · Asha" in client.get("/").text
+    assert "Dashboard · Asha" in client.get("/dashboard.html").text
+    assert "Setup · Asha" in client.get("/setup.html").text
 
 
 def test_get_to_know_you_fills_profile_without_counting_as_checkin(client, monkeypatch):

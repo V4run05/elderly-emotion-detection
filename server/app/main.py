@@ -57,7 +57,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="I'm Fine companion", lifespan=lifespan)
+app = FastAPI(title="Asha companion", lifespan=lifespan)
 
 
 @app.exception_handler(conversation.ConversationError)

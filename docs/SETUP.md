@@ -76,7 +76,11 @@ The dashboard needs days of history to show a trend. Seed clearly labelled synth
 ```
 
 Seeding leaves today empty so a live conversation shows up as today's point. If no profile exists yet,
-it also creates a sample one (Lakshmi, granddaughter Priya, two reminders) and three demo memories.
+it also creates a sample one (Lakshmi, granddaughter Priya, two reminders) and six demo memories.
+In the masked scenario, yesterday is a full scripted conversation (`SHOWCASE` in the script): she says "I'm fine",
+opens up, and Asha brings back good things (her roses, Priya's exams, tea with Kamala), checks her BP tablet and
+suggests a plan. It's the top row of the dashboard's conversation table. For a clean demo run `--clear-all` first
+(it also removes real test conversations and memories), then seed.
 An existing profile is never overwritten. `--clear` removes demo conversations and demo memories. The demo script for
 reviews is in [PROJECT_SPEC.md §11](PROJECT_SPEC.md#11-evaluation-and-demo-plan).
 

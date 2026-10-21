@@ -4,7 +4,7 @@ Context for every new Claude Code session on this repo. Read this, then the doc 
 
 ## What this project is
 
-**"I'm Fine"**, a Cognitive Robotics course project. A voice companion for older adults living
+**Asha**, a Cognitive Robotics course project. A voice companion for older adults living
 alone: an open conversation about anything, any time, personalised from a profile and memory.
 Underneath, it compares **what they say** (speech → text → sentiment + reassurance phrases) with
 **how they seem** (voice-emotion + face-emotion models); once a day it asks "how are you feeling?".

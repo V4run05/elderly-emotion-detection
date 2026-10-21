@@ -1,4 +1,4 @@
-# Project Spec: "I'm Fine", detecting hidden low mood in older adults
+# Project Spec: Asha, detecting hidden low mood in older adults
 
 > **What this file is:** what we are building and why: the problem, the method, the rules,
 > the hardware plan and the open questions. For *how the code is organised* see

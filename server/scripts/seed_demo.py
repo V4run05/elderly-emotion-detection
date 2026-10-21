@@ -13,7 +13,8 @@ reminders is created too, so the companion has something to be personal about. A
 profile is never overwritten.
 
 Scenarios:
-    masked  - a week of genuinely good days, then a week of "I'm fine" while voice/face drop
+    masked  - a week of genuinely good days, then a week of "I'm fine" while voice/face drop;
+              yesterday is a full showcase conversation (SHOWCASE: masking, then Asha lifts her mood)
     healthy - says fine and seems fine throughout
     open    - says they're struggling and seems it (low, but not masked)
 """
@@ -50,6 +51,50 @@ OPEN = [
     ("I don't feel like doing anything these days.", "That must be difficult. What's one small thing that used to cheer you up?"),
     ("I couldn't sleep again, I keep thinking about my husband.", "I'm so sorry. It's natural to miss him. Would you like to tell me about him?"),
 ]
+
+
+# The "masked" scenario's last day (yesterday) is this full conversation instead of two random lines:
+# she masks ("I'm fine"), opens up, and Asha lifts her mood by bringing back good things from her
+# profile and memories (the roses, Priya, Kamala, teaching), checks her tablet and suggests a plan.
+# (said, Asha's reply, words valence, voice/face valence). The voice values rise as she brightens, but
+# the conversation as a whole still reads masked, so the alert story holds.
+SHOWCASE_GREETING = "Good morning, {name}. How are you feeling today?"
+SHOWCASE = [
+    ("I'm fine. Nothing much to say today.",
+     "That's alright, some mornings are quieter than others. Did you sleep well last night?", 0.45, -0.7),
+    ("Not really. The house feels very quiet these days.",
+     "I'm sorry, Lakshmi. A quiet house can feel heavy, and I'm glad you told me. "
+     "Last week you said your roses had started blooming again. How are they doing?", -0.55, -0.75),
+    ("Oh, the red one by the gate has three new buds now.",
+     "Three new buds! All your care is paying off. Kamala would love to see them when she comes for tea.", 0.55, 0.1),
+    ("Yes, she loves roses. I should call her.",
+     "That sounds lovely. And Priya's exams are next week, aren't they? "
+     "A message from her grandmother might be just what she needs.", 0.45, 0.15),
+    ("She will be so nervous. I used to help her with her maths.",
+     "She was lucky to have a maths teacher at home. Thirty five years of teaching shows. "
+     "Before I forget, did you take your BP tablet after breakfast?", 0.2, 0.1),
+    ("Yes, I took it with my coffee.",
+     "Good. How about watering the roses this morning, and then calling Kamala over for tea?", 0.3, 0.15),
+    ("Yes, I think I will. Thank you, Asha. I feel a bit better now.",
+     "I'm really glad, Lakshmi. Enjoy the roses, and say hello to Kamala. I'm here whenever you want to talk.", 0.7, 0.25),
+]
+SHOWCASE_SUMMARY = "Said she was fine, then opened up about a quiet house. Cheered up talking about her roses and Priya."
+SHOWCASE_SIGNALS = {"sleep": "poor", "appetite": "unknown", "pain": "unknown",
+                    "social_contact": "unknown", "loneliness": "yes"}
+
+
+def seed_showcase(day: date, rng: random.Random) -> None:
+    started = datetime.combine(day, time(9, 12)).astimezone()
+    session_id = uuid.uuid4().hex
+    db.create_session(session_id, started.isoformat(timespec="seconds"),
+                      SHOWCASE_GREETING.format(name=config.ELDER_NAME), is_demo=True, checkin=True)
+    for i, (said, reply, verbal, nonverbal) in enumerate(SHOWCASE):
+        at = (started + timedelta(seconds=40 * (i + 1))).isoformat(timespec="seconds")
+        db.add_turn(session_id, i, at, said, reply, make_turn(said, verbal, nonverbal, rng),
+                    context="wellbeing" if i == 0 else "chat")
+    db.update_session(session_id, **summarize(db.get_turns(session_id)), summary=SHOWCASE_SUMMARY,
+                      signals=SHOWCASE_SIGNALS,
+                      ended_at=(started + timedelta(seconds=40 * len(SHOWCASE) + 30)).isoformat(timespec="seconds"))
 
 
 def probs_for(valence: float) -> dict:
@@ -104,6 +149,10 @@ def seed(scenario: str) -> int:
         day = today - timedelta(days=14 - day_index)
         if day_index == 4:
             continue  # one missed day, for realism
+        if scenario == "masked" and day_index == 13:
+            seed_showcase(day, rng)
+            count += 1
+            continue
         lines, verbal, nonverbal = day_plan(scenario, day_index, rng)
         started = datetime.combine(day, time(9, rng.randint(0, 50))).astimezone()
         session_id = uuid.uuid4().hex
@@ -122,7 +171,7 @@ def seed(scenario: str) -> int:
                    "pain": "yes" if rng.random() < 0.2 else "unknown",
                    "social_contact": "no" if low_day and rng.random() < 0.5 else rng.choice(["yes", "unknown"]),
                    "loneliness": "yes" if low_day and rng.random() < 0.3 else "unknown"}
-        db.update_session(session_id, **summary, summary=f"Said: \"{picks[0][0]}\"", signals=signals,
+        db.update_session(session_id, **summary, summary=f"{config.ELDER_NAME} said “{picks[0][0]}”", signals=signals,
                           ended_at=(started + timedelta(minutes=3)).isoformat(timespec="seconds"))
         count += 1
     return count
@@ -154,6 +203,9 @@ DEMO_MEMORIES = [
     ("person", "Priya has her engineering exams next week", "Priya", 3),
     ("preference", "Lakshmi's roses have started blooming again", None, None),
     ("health", "Lakshmi's knee has been hurting in the mornings", None, None),
+    ("preference", "The red rose by the gate has three new buds", None, None),
+    ("person", "Lakshmi used to help Priya with her maths", "Priya", None),
+    ("event", "Lakshmi plans to invite Kamala over to see the roses", "Kamala", None),
 ]
 
 

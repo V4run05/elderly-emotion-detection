@@ -432,4 +432,8 @@ Keep new UI consistent with it:
   button reads "Let me talk" while speaking (interrupt).
 - **Scrollbars:** thin rounded thumb, no arrows/track (`--scroll-thumb`); WebKit rules for Chromium, the
   standard properties only as a Firefox fallback.
+- **Analysis cards** start with one plain sentence (`verdict()` in talk.js: "Said they're fine, but seemed lower
+  than their usual.") above the numbers. "Compared with usual" = this reading minus their normal (personal baseline).
+- **Chart low line:** with a personal baseline it is drawn at the voice's normal − drop (the threshold is a drop
+  from normal, not a position on the chart); before that, at the fixed line.
 - Light and dark themes come from `:root` tokens in `style.css` (`prefers-color-scheme`, `data-theme`).

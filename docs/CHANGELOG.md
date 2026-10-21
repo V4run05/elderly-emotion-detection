@@ -10,6 +10,47 @@
 
 ---
 
+## 2026-10-20: Results document
+
+**Added**
+- `docs/Asha_Results.docx`: the evaluation results in plain language for the presentation (summary table,
+  then each result: what was measured, the result, what it means). Numbers are from EVALUATION.md §0–§11.
+
+---
+
+## 2026-10-20: Showcase demo conversation, plainer analysis, chart low line
+
+Request: remove "Includes demo data", add a good demo conversation where Asha reminds her of good things,
+and make "vs. their normal" easier to understand. (A separate Conversations page was tried and removed.)
+
+**Added**
+- `seed_demo.py`: the masked scenario's last day (yesterday) is a scripted 7-message conversation (masked, then
+  opening up, then Asha recalls her roses, Priya's exams and Kamala, checks the BP tablet, and she brightens;
+  the conversation still reads masked). Three more demo memories; demo days get readable summaries.
+- Talk page analysis cards start with one plain sentence ("Said they're fine, but seemed lower than their usual.").
+
+**Changed**
+- Dashboard: no "Includes demo data" label and no "demo" tags on conversations or memories
+  (`has_demo_data` stays in the API).
+- "Vs. their normal" → "Compared with usual … (low below …)".
+
+**Fixed**
+- The chart's dashed low line was drawn at the threshold value (a drop from normal, e.g. −0.32) once the
+  personal baseline was ready, so masked days could sit above it. It's now at the voice's normal − drop.
+
+---
+
+## 2026-10-20: Project renamed from "I'm Fine" to Asha
+
+Request: name the project after the companion (Asha, `COMPANION_NAME`).
+
+**Changed**
+- Page titles and wordmarks (talk, dashboard, setup), the dashboard's tab title, the FastAPI app title,
+  README, PROJECT_SPEC and CLAUDE.md headings, and the page-title test in `test_api.py`.
+- "I'm fine" as the reassurance phrase the system detects is unchanged. Older changelog entries keep the old name.
+
+---
+
 ## 2026-10-19: Fixes from the evaluation (safety, LLM budget, baseline, invention)
 
 Request: make all the changes the evaluation recommended, using only the data we have (no older adults

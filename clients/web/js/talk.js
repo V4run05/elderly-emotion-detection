@@ -129,10 +129,26 @@ function cardShell(title, statusEl, quote, tag) {
   if (quote) card.append(el('p', 'answer-quote', `“${quote}”`));
   return card;
 }
+// The card's numbers in one plain sentence. "Usual" = this person's own normal (personal baseline);
+// before that is learned, "low" means below a fixed line.
+function verdict(a, typed) {
+  if (a.safety_flag) return 'Said something worrying. Family is alerted.';
+  if (typed) return 'Typed, so only the words are read.';
+  if (a.reading === false || !a.nonverbal.available) return 'Too short to read voice and face, so only the words count.';
+  const usual = a.vs_normal !== null && a.vs_normal !== undefined;
+  const lowWords = usual ? 'seemed lower than their usual' : 'seemed low';
+  const saidBad = a.verbal.valence <= -0.2;
+  if (a.status === 'masked') return `Said they’re fine, but ${lowWords}.`;
+  if (a.status === 'low') return saidBad ? `Said they’re not doing well, and ${lowWords}.` : `${lowWords[0].toUpperCase()}${lowWords.slice(1)}.`;
+  if (saidBad) return `Said they’re not doing well, but voice and face ${usual ? 'seemed as usual' : 'didn’t seem low'}.`;
+  return usual ? 'Said and seemed about as usual.' : 'Said they’re OK and didn’t seem low.';
+}
+
 function addAnalysis(data) {
   const a = data.analysis;
   const tag = data.context === 'wellbeing' ? 'daily question' : (data.input === 'typed' ? 'typed' : '');
   const card = cardShell(`Message ${data.turn_index + 1}`, status(a.safety_flag ? 'urgent' : a.status), data.transcript, tag);
+  card.append(el('p', 'answer-verdict', verdict(a, data.input === 'typed')));
   const said = el('dl');
   kv(said, 'Said', `${verbalWord(a.verbal.valence)} ${signed(a.verbal.valence)}`);
   card.append(said, scale(a.verbal.valence, '--series-said'));
@@ -146,7 +162,7 @@ function addAnalysis(data) {
     kv(seemed, 'Seemed', a.nonverbal.available ? signed(a.nonverbal.valence) : 'n/a');
     if (a.reading === false) kv(seemed, 'Reading', 'too short to count');
     else if (a.vs_normal !== null && a.vs_normal !== undefined) {
-      kv(seemed, 'Vs. their normal', `${signed(a.vs_normal)} (low at ${signed(a.low_threshold)})`);
+      kv(seemed, 'Compared with usual', `${signed(a.vs_normal)} (low below ${signed(a.low_threshold)})`);
     } else if (a.baseline) {
       kv(seemed, 'Low line', `${signed(a.low_threshold)} ${a.baseline.ready ? '(personal)' : `(learning, ${a.baseline.sessions}/${a.baseline.needed})`}`);
     }

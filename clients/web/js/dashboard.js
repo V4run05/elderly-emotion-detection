@@ -40,8 +40,7 @@ function renderSummary(alert) {
   level.append(status(alert.level, LEVEL_LABEL[alert.level]));
   $('message').textContent = alert.message;
   const updated = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  $('meta').textContent = `Last ${alert.window_days} days · Updated ${updated}` +
-    (data.has_demo_data ? ' · Includes demo data' : '');
+  $('meta').textContent = `Last ${alert.window_days} days · Updated ${updated}`;
   const none = alert.level === 'none';
   $('s-days').innerHTML = '';
   if (none) {
@@ -83,12 +82,15 @@ function renderChart() {
     const t = svg('text', { x: m.left - 10, y: y(v) + 4, 'text-anchor': 'end', class: 'axis-label' }, chart);
     t.textContent = v === 0 ? '0' : signed(v, v % 1 ? 1 : 0);
   });
-  // "low" threshold
-  const low = data.thresholds.low_nonverbal;
+  // "low" line. With a personal baseline the threshold is a drop from their normal, so the line goes
+  // at normal − drop of the voice (the channel that decides); otherwise it's the fixed line.
+  const b = data.baseline;
+  const voice = b.mode === 'channels' && b.channels.voice.ready ? b.channels.voice : null;
+  const low = voice ? voice.normal - voice.drop : data.thresholds.low_nonverbal;
   svg('line', { x1: m.left, x2: m.left + iw, y1: y(low), y2: y(low), stroke: 'var(--ink-3)',
     'stroke-dasharray': '2 4', 'stroke-width': 1 }, chart);
   const lowLabel = svg('text', { x: m.left + 6, y: y(low) - 6, class: 'axis-label' }, chart);
-  lowLabel.textContent = 'low threshold';
+  lowLabel.textContent = voice ? `low for ${data.elder_name}` : 'low threshold';
 
   // lines (broken on days without a conversation) + markers
   const lines = [['verbal_valence', '--series-said', 'Said'], ['nonverbal_valence', '--series-seemed', 'Seemed']];
@@ -218,7 +220,6 @@ function renderSessions(sessions) {
     row.setAttribute('aria-expanded', String(open.has(s.id)));
     const st = el('td'); st.append(status(s.safety_flag ? 'urgent' : s.status));
     const quote = el('td', 'quote hide-sm', s.turns[0] ? `“${s.turns[0].transcript}”` : '');
-    if (s.is_demo) quote.append(el('span', 'demo-tag', 'demo'));
     row.append(el('td', 'date', when), st, quote,
       el('td', 'num', signed(s.verbal_valence)), el('td', 'num', signed(s.nonverbal_valence)));
 
@@ -355,7 +356,7 @@ function renderMemories(memories) {
     const when = new Date(m.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     const main = el('div', 'grow');
     main.append(el('div', '', m.text));
-    main.append(el('div', 'sub-text', [m.kind, m.event_date ? `on ${dayLabel(m.event_date)}` : '', m.is_demo ? 'demo' : '']
+    main.append(el('div', 'sub-text', [m.kind, m.event_date ? `on ${dayLabel(m.event_date)}` : '']
       .filter(Boolean).join(' · ')));
     const forget = el('button', 'link-button', 'Remove');
     forget.type = 'button';
@@ -387,7 +388,7 @@ async function load() {
   } finally {
     $('dash').style.opacity = '1';
   }
-  document.title = `${data.elder_name} · I'm Fine`;
+  document.title = `${data.elder_name} · Asha`;
   renderSummary(data.alert);
   renderChart();
   renderDotLegend();
